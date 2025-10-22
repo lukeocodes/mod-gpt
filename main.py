@@ -8,6 +8,7 @@ import logging
 from modgpt import create_bot
 from modgpt.config import load_settings
 from modgpt.db import Database
+from modgpt.health import start_health_server
 from modgpt.llm import LLMClient
 from modgpt.state import StateStore
 
@@ -32,9 +33,14 @@ async def async_main() -> None:
     )
 
     bot = create_bot(settings, state, llm, database)
+    health_server = await start_health_server(
+        settings.health_host, settings.health_port, state, database
+    )
     try:
         await bot.start(settings.discord_token)
     finally:
+        health_server.close()
+        await health_server.wait_closed()
         await database.close()
 
 

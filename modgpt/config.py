@@ -21,6 +21,8 @@ class BotSettings(BaseModel):
     openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
     database_url: Optional[str] = Field(default=None, alias="SUPABASE_DB_URL")
     built_in_prompt: Optional[str] = Field(default=None, alias="BUILT_IN_PROMPT")
+    health_host: str = Field(default="0.0.0.0", alias="HEALTH_HOST")
+    health_port: int = Field(default=8080, alias="HEALTH_PORT")
 
     class Config:
         populate_by_name = True
