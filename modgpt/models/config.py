@@ -3,24 +3,22 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationError
-from pathlib import Path
-
-_DEFAULT_MODEL = "gpt-4o-mini"
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 
 
 class BotSettings(BaseModel):
     """Runtime configuration parsed from environment variables."""
 
     discord_token: str = Field(..., alias="DISCORD_TOKEN")
-    openai_api_key: Optional[str] = Field(default=None, alias="OPENAI_API_KEY")
-    openai_model: str = Field(default=_DEFAULT_MODEL, alias="OPENAI_MODEL")
-    openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
-    database_url: Optional[str] = Field(default=None, alias="SUPABASE_DB_URL")
-    built_in_prompt: Optional[str] = Field(default=None, alias="BUILT_IN_PROMPT")
+    database_url: Optional[str] = Field(
+        default=None,
+        alias="SUPABASE_DB_URL",
+        validation_alias=AliasChoices("SUPABASE_DB_URL", "DATABASE_URL", "database_url"),
+    )
     health_host: str = Field(default="0.0.0.0", alias="HEALTH_HOST")
     health_port: int = Field(default=8080, alias="HEALTH_PORT")
 
@@ -42,7 +40,7 @@ def load_settings(env_file: str | None = ".env") -> BotSettings:
             (
                 "Missing required configuration values: "
                 f"{', '.join(missing)}. "
-                "Create a .env file with DISCORD_TOKEN and optionally OPENAI_API_KEY."
+                "Ensure DISCORD_TOKEN is set before running the bot."
             )
         ) from exc
 

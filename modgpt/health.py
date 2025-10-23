@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Optional
 
 from .db import Database
-from .state import StateStore
+from .services.state import StateStore
 
 
 async def _handle_client(
@@ -26,12 +25,7 @@ async def _handle_client(
     request_line = data.decode(errors="ignore").split("\r\n", 1)[0]
     method, path, *_ = request_line.split(" ")
     if method.upper() != "GET" or path not in {"/", "/health", "/healthz"}:
-        response = (
-            "HTTP/1.1 404 Not Found\r\n"
-            "Content-Length: 0\r\n"
-            "Connection: close\r\n"
-            "\r\n"
-        )
+        response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         writer.write(response.encode())
         await writer.drain()
         writer.close()
@@ -44,6 +38,7 @@ async def _handle_client(
         "status": "ok",
         "dry_run": snapshot.dry_run,
         "persona": snapshot.persona.name,
+        "llm_configured": bool(snapshot.llm.api_key),
         "database_connected": db_ok,
     }
     body = json.dumps(payload).encode()

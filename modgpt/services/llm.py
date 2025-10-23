@@ -33,6 +33,20 @@ class LLMClient:
     def is_configured(self) -> bool:
         return self._client is not None
 
+    def update_config(
+        self, api_key: Optional[str], model: str, base_url: Optional[str] = None
+    ) -> None:
+        """Update LLM configuration and reinitialize the client."""
+        self._api_key = api_key
+        self._model = model
+        self._base_url = base_url
+        self._client = None
+        if api_key and AsyncOpenAI is not None:
+            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            logger.info(
+                "LLM client reconfigured with model=%s, base_url=%s", model, base_url or "default"
+            )
+
     async def run(
         self,
         messages: Iterable[Dict[str, Any]],
@@ -43,7 +57,7 @@ class LLMClient:
 
         if self._client is None:
             raise LLMUnavailable(
-                "OpenAI API key not configured. Set OPENAI_API_KEY to enable reasoning."
+                "LLM credentials not configured. Use the `set-llm` command to provide an API key before enabling reasoning."
             )
 
         response = await self._client.chat.completions.create(

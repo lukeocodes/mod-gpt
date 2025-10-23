@@ -6,11 +6,11 @@ import asyncio
 import logging
 
 from modgpt import create_bot
-from modgpt.config import load_settings
+from modgpt.models.config import load_settings
 from modgpt.db import Database
 from modgpt.health import start_health_server
-from modgpt.llm import LLMClient
-from modgpt.state import StateStore
+from modgpt.services.llm import LLMClient
+from modgpt.services.state import StateStore
 
 
 def configure_logging() -> None:
@@ -25,11 +25,14 @@ async def async_main() -> None:
     settings = load_settings()
     database = Database(settings.database_url)
     await database.connect()
-    state = StateStore(database=database, built_in_prompt=settings.built_in_prompt)
+    state = StateStore(database=database)
+    await state.load()
+    snapshot = await state.get_state()
+    llm_config = snapshot.llm
     llm = LLMClient(
-        api_key=settings.openai_api_key,
-        model=settings.openai_model,
-        base_url=settings.openai_base_url,
+        api_key=llm_config.api_key,
+        model=llm_config.model,
+        base_url=llm_config.base_url,
     )
 
     bot = create_bot(settings, state, llm, database)
