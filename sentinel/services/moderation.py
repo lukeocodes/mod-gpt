@@ -1798,7 +1798,7 @@ Remember: Use actual words from the message, not placeholders. This pattern will
         if dry_run and not summary.startswith("[DRY-RUN]"):
             log_summary = f"[DRY-RUN] {summary}"
 
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=guild.id)
         logs_channel_id = state.logs_channel_id
         if not logs_channel_id:
             logger.info("[log] %s", log_summary)

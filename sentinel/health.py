@@ -40,7 +40,8 @@ async def _handle_client(
         await writer.wait_closed()
         return
 
-    snapshot = await state.get_state()
+    # Health endpoint is global, not guild-specific
+    snapshot = await state.get_state(guild_id=None)
     db_ok = database.is_connected if database else False
 
     # Fetch active machines (last 5 minutes) via registration service
