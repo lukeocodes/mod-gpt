@@ -56,6 +56,9 @@ jobs:
             - name: Install Flyctl
               uses: superfly/flyctl-actions/setup-flyctl@master
 
+            - name: Set Fly.io app version
+              run: flyctl secrets set APP_VERSION=${{ github.ref_name }} -a ${{ secrets.FLY_APP_NAME }}
+
             - name: Deploy to Fly.io
               run: flyctl deploy -a ${{ secrets.FLY_APP_NAME }} --env APP_VERSION=${{ github.ref_name }} --build-arg APP_VERSION=${{ github.ref_name }} --remote-only
               env:
