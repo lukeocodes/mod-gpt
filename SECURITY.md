@@ -14,7 +14,7 @@ We release patches for security vulnerabilities in the following versions:
 
 If you discover a security vulnerability, please report it privately to the maintainers:
 
-1. **Email:** [Your security email]
+1. **Email:** luke@lukeoliff.com
 2. **Subject:** `[SECURITY] Sentinel AI vulnerability report`
 
 ### What to Include
@@ -163,7 +163,7 @@ We appreciate security researchers who:
 
 We commit to:
 
-- **Acknowledge** reports within 48 hours
+- **Acknowledge** reports within 24 hours
 - **Provide updates** on fix progress
 - **Credit researchers** in security advisories (if desired)
 - **Coordinate disclosure** timing with reporter
