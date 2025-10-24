@@ -296,17 +296,21 @@ class StateStore:
         Returns:
             True if refreshed successfully, False if channel not found
         """
-        async with self._lock:
-            if channel_id not in self._state.context_channels:
-                return False
-
-            ctx = self._state.context_channels[channel_id]
-
-        # Fetch channel from Discord (outside the lock to avoid blocking)
+        # Fetch channel from Discord to determine guild_id
         try:
             channel = bot.get_channel(channel_id)
-            if not channel:
+            if not channel or not hasattr(channel, "guild"):
                 return False
+
+            guild_id = channel.guild.id
+
+            # Get current state for this guild
+            async with self._lock:
+                current_state = await self.get_state(guild_id=guild_id)
+                if channel_id not in current_state.context_channels:
+                    return False
+
+                ctx = current_state.context_channels[channel_id]
 
             from datetime import datetime
             from datetime import timezone as tz
@@ -337,7 +341,7 @@ class StateStore:
             return False
 
     async def refresh_all_context_channels(self, bot, llm_client) -> int:
-        """Refresh all context channels at startup or on-demand.
+        """Refresh all context channels across all guilds at startup or on-demand.
 
         Args:
             bot: Discord bot instance
@@ -350,20 +354,30 @@ class StateStore:
 
         logger = logging.getLogger(__name__)
 
-        state = await self.get_state()
-        if not state.context_channels:
-            return 0
-
         refreshed = 0
-        for channel_id in list(state.context_channels.keys()):
-            try:
-                if await self.refresh_context_channel(channel_id, bot, llm_client):
-                    refreshed += 1
-                    logger.info(f"Refreshed context channel {channel_id}")
-            except Exception as e:
-                logger.warning(f"Failed to refresh context channel {channel_id}: {e}")
+        total_channels = 0
 
-        logger.info(f"Refreshed {refreshed}/{len(state.context_channels)} context channels")
+        # Iterate through all guilds and refresh their context channels
+        for guild in bot.guilds:
+            guild_state = await self.get_state(guild_id=guild.id)
+            if not guild_state.context_channels:
+                continue
+
+            total_channels += len(guild_state.context_channels)
+            for channel_id in list(guild_state.context_channels.keys()):
+                try:
+                    if await self.refresh_context_channel(channel_id, bot, llm_client):
+                        refreshed += 1
+                        logger.info(f"Refreshed context channel {channel_id} in guild {guild.id}")
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to refresh context channel {channel_id} in guild {guild.id}: {e}"
+                    )
+
+        if total_channels > 0:
+            logger.info(
+                f"Refreshed {refreshed}/{total_channels} context channels across all guilds"
+            )
         return refreshed
 
     async def set_logs_channel(self, guild_id: int, channel_id: Optional[int]) -> None:
@@ -506,14 +520,12 @@ class StateStore:
         async with self._lock:
             settings = settings.model_copy()
             self._initial_llm_settings = settings
-            self._state.llm = settings
             if self._uses_db:
                 await self._db.set_llm_settings(
                     api_key=settings.api_key,
                     model=settings.model,
                     base_url=settings.base_url,
                 )
-            await self._write_locked()
 
     # Legacy: command_prefix removed - using slash commands exclusively
 
