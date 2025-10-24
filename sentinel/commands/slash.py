@@ -221,19 +221,27 @@ def register_slash_commands(
                 f"❌ No memory found with id #{memory_id}.", ephemeral=True
             )
 
-    @tree.command(name="set-built-in-prompt", description="Set a deployment-wide prompt")
+    @tree.command(name="set-built-in-prompt", description="Set a server-wide prompt")
     @app_commands.describe(prompt="The prompt text (leave empty to clear)")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_built_in_prompt(
         interaction: discord.Interaction, prompt: Optional[str] = None
     ) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ This command can only be used inside a server.", ephemeral=True
+            )
+            return
         value = prompt.strip() if prompt and prompt.strip() else None
-        await state.set_built_in_prompt(value)
+        await state.set_built_in_prompt(interaction.guild.id, value)
         if value:
-            await interaction.response.send_message("✅ Built-in prompt updated.", ephemeral=True)
+            await interaction.response.send_message(
+                "✅ Built-in prompt updated for this server.", ephemeral=True
+            )
         else:
             await interaction.response.send_message(
-                "✅ Built-in prompt cleared; using internal defaults only.", ephemeral=True
+                "✅ Built-in prompt cleared for this server; using internal defaults only.",
+                ephemeral=True,
             )
 
     @tree.command(name="set-llm", description="Configure LLM settings")
@@ -263,7 +271,8 @@ def register_slash_commands(
                 return None
             return cleaned
 
-        current = (await state.get_state()).llm
+        # LLM settings are global
+        current = (await state.get_state(guild_id=None)).llm
         updated = LLMSettings(
             api_key=_normalize(api_key) if api_key is not None else current.api_key,
             model=_normalize(model) if model is not None else current.model,
@@ -289,7 +298,8 @@ def register_slash_commands(
 
     @tree.command(name="llm-status", description="Check current LLM configuration")
     async def llm_status(interaction: discord.Interaction) -> None:
-        snapshot = await state.get_state()
+        # LLM settings are global, but get_state without guild_id returns minimal state
+        snapshot = await state.get_state(guild_id=None)
         llm_conf = snapshot.llm
         masked_key = (llm_conf.api_key[:4] + "…") if llm_conf.api_key else "<unset>"
         await interaction.response.send_message(
@@ -349,15 +359,21 @@ def register_slash_commands(
     @app_commands.describe(enabled="True to enable, False to disable")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_dry_run(interaction: discord.Interaction, enabled: bool) -> None:
-        await state.set_dry_run(enabled)
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ This command can only be used inside a server.", ephemeral=True
+            )
+            return
+        await state.set_dry_run(interaction.guild.id, enabled)
         if enabled:
             await interaction.response.send_message(
-                "✅ Dry-run mode enabled. Actions will be simulated and logged only.",
+                "✅ Dry-run mode enabled for this server. Actions will be simulated and logged only.",
                 ephemeral=True,
             )
         else:
             await interaction.response.send_message(
-                "✅ Dry-run mode disabled. Actions will execute normally.", ephemeral=True
+                "✅ Dry-run mode disabled for this server. Actions will execute normally.",
+                ephemeral=True,
             )
 
     @tree.command(
@@ -369,15 +385,20 @@ def register_slash_commands(
     )
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_proactive_moderation(interaction: discord.Interaction, enabled: bool) -> None:
-        await state.set_proactive_moderation(enabled)
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ This command can only be used inside a server.", ephemeral=True
+            )
+            return
+        await state.set_proactive_moderation(interaction.guild.id, enabled)
         if enabled:
             await interaction.response.send_message(
-                "✅ Proactive moderation enabled. Bot will check ALL messages for rule violations.",
+                "✅ Proactive moderation enabled for this server. Bot will check ALL messages for rule violations.",
                 ephemeral=True,
             )
         else:
             await interaction.response.send_message(
-                "✅ Proactive moderation disabled. Bot will only check when mentioned or in conversations.",
+                "✅ Proactive moderation disabled for this server. Bot will only check when mentioned or in conversations.",
                 ephemeral=True,
             )
 
