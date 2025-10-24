@@ -49,6 +49,8 @@ jobs:
         if: needs.release-please.outputs.release_created
         name: Deploy app to Fly.io
         runs-on: ubuntu-latest
+        env:
+            FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -61,5 +63,3 @@ jobs:
 
             - name: Deploy to Fly.io
               run: flyctl deploy -a ${{ secrets.FLY_APP_NAME }} --env APP_VERSION=${{ github.ref_name }} --build-arg APP_VERSION=${{ github.ref_name }} --remote-only
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
