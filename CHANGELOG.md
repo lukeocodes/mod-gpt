@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/lukeocodes/sentinel-ai/compare/v1.0.0...v1.0.1) (2025-10-24)
+
+
+### Bug Fixes
+
+* use FLY_APP_NAME secret for deployment ([835812e](https://github.com/lukeocodes/sentinel-ai/commit/835812e5b171b0423da36cd27e22fe1234668c10))
+
 ## [1.0.0](https://github.com/lukeocodes/sentinel-ai/compare/v0.1.0...v1.0.0) (2025-10-24)
 
 
