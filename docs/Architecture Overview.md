@@ -12,7 +12,7 @@ The Discord client initialization and event handling orchestration. This is the 
 
 - Initializes the Discord bot with appropriate intents (members, message content)
 - Registers slash commands and context menu commands
-- Sets up event handlers for messages, edits, deletions, member joins/leaves
+- Sets up event handlers for messages, edits, deletions, and member joins
 - Manages the scheduled tick loop for periodic maintenance
 - Coordinates between Discord events and the moderation agent
 

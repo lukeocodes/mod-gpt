@@ -93,10 +93,9 @@ def build_event_prompt(event_name: str, payload: Dict[str, str]) -> str:
             "Do NOT escalate or respond unless you see NEW critical issues that haven't been addressed yet. "
             "In most cases, you should do nothing during scheduled ticks."
         )
-    elif event_name in ("member_join", "member_remove"):
+    elif event_name == "member_join":
         lines.append(
-            "Note: To send a welcome/farewell message, you must provide a channel_id. "
-            "Use the ID of an appropriate channel like a welcome channel or general chat."
+            "Do NOT send a welcome message, but ensure their username doesn't break any rules."
         )
     else:
         lines.append("Decide on next steps using the available tools.")

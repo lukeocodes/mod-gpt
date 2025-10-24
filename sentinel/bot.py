@@ -170,8 +170,4 @@ def create_bot(
     async def on_member_join(member: discord.Member) -> None:
         await moderation.handle_member_join(member)
 
-    @bot.event
-    async def on_member_remove(member: discord.Member) -> None:
-        await moderation.handle_member_remove(member)
-
     return bot

@@ -306,20 +306,6 @@ class ModerationAgent:
         await self._record_member_join(member)
         await self._reason_about_event("member_join", payload, state, context)
 
-    async def handle_member_remove(self, member: discord.Member) -> None:
-        state = await self._state.get_state()
-        guild = member.guild
-        context = EventContext(bot=self._bot, guild=guild, member=member, dry_run=state.dry_run)
-        payload = {
-            "member": f"{member} ({member.id})",
-            "roles": ", ".join(role.name for role in member.roles if role.name != "@everyone")
-            or "none",
-            "joined_at": member.joined_at.isoformat() if member.joined_at else "unknown",
-            "server": f"{guild.name} ({guild.id})",
-            "current_time": discord.utils.utcnow().isoformat(),
-        }
-        await self._reason_about_event("member_remove", payload, state, context)
-
     async def handle_scheduled_tick(self, guild: discord.Guild) -> None:
         # Clean up old conversations
         if self._conversations:

@@ -85,7 +85,7 @@ HEALTH_PORT=3000
 The bot requires the following Discord intents:
 
 - `guilds`: Access to guild information
-- `members`: Access to member join/leave events
+- `members`: Access to member join events
 - `message_content`: Read message content for moderation
 
 **Enable in Discord Developer Portal:**
