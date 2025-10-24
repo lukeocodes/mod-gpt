@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sentinel-ai"
-version = "1.1.0"
+version = "1.2.0"
 description = "AI-Powered Discord Moderation Bot - Combines fast pattern matching with LLM reasoning to protect your community."
 authors = [{ name = "Luke Oliff" }]
 requires-python = ">=3.10"
