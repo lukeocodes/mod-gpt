@@ -1072,27 +1072,41 @@ class ModerationAgent:
             except AttributeError:
                 reference = None
 
-        try:
-            sent_message = await send_channel.send(message_content, reference=reference)
-        except discord.Forbidden:
-            logger.warning("Insufficient permissions to send message in %s", send_channel)
-            return
-        except discord.HTTPException:
-            logger.exception("Failed to send message in %s", send_channel)
-            return
+        # Split message if it exceeds Discord's character limit
+        from ..utils.discord import split_message
 
-        # Record bot's response in conversation if we have one
-        if conversation_id and self._conversations:
-            await self._conversations.record_bot_response(conversation_id, sent_message)
+        message_chunks = split_message(message_content)
+
+        # Send all message chunks
+        sent_messages: List[discord.Message] = []
+        for i, chunk in enumerate(message_chunks):
+            # Only use reference for the first message
+            chunk_reference = reference if i == 0 else None
+
+            try:
+                sent_message = await send_channel.send(chunk, reference=chunk_reference)
+                sent_messages.append(sent_message)
+            except discord.Forbidden:
+                logger.warning("Insufficient permissions to send message in %s", send_channel)
+                return
+            except discord.HTTPException:
+                logger.exception("Failed to send message in %s", send_channel)
+                return
+
+        # Record bot's response in conversation if we have one (use the last message)
+        if conversation_id and self._conversations and sent_messages:
+            await self._conversations.record_bot_response(conversation_id, sent_messages[-1])
 
         # Record channel activity for analytics (not logged as an action since this is just a reply)
+        # Record activity for each sent message
         channel_for_log = (
             send_channel if isinstance(send_channel, discord.abc.GuildChannel) else resolved_channel
         )
         if isinstance(channel_for_log, discord.abc.GuildChannel):
-            await self._record_bot_channel_activity(
-                guild, channel_for_log, sent_message, context_tag
-            )
+            for sent_msg in sent_messages:
+                await self._record_bot_channel_activity(
+                    guild, channel_for_log, sent_msg, context_tag
+                )
 
     async def _tool_escalate(self, args: Dict[str, Any], context: EventContext) -> None:
         summary = args.get("summary")
