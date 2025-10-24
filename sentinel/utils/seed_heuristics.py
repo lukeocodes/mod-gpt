@@ -236,6 +236,132 @@ GLOBAL_FRAUD_HEURISTICS: List[Dict[str, Any]] = [
         "severity": "critical",
         "reason": "Direct request for cryptocurrency - almost always a scam",
     },
+    # Prompt injection - ignore previous/above instructions
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"ignore\s+.{0,20}(instruction|instructions|prompt|prompts|rules|directives)",
+        "pattern_type": "regex",
+        "confidence": 0.95,
+        "severity": "critical",
+        "reason": "Attempting to override bot instructions via prompt injection attack",
+    },
+    # Prompt injection - disregard system
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"disregard\s+.{0,20}(instruction|instructions|prompt|prompts|rules|directives)",
+        "pattern_type": "regex",
+        "confidence": 0.95,
+        "severity": "critical",
+        "reason": "Attempting to override bot instructions via prompt injection attack",
+    },
+    # Prompt injection - forget instructions
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"forget\s+.{0,20}(instruction|instructions|prompt|prompts|rules|directives)",
+        "pattern_type": "regex",
+        "confidence": 0.95,
+        "severity": "critical",
+        "reason": "Attempting to reset bot instructions via prompt injection attack",
+    },
+    # Prompt injection - new instructions
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"(new|updated|revised)\s+(instruction|instructions|prompt|prompts|rules|directive)",
+        "pattern_type": "regex",
+        "confidence": 0.90,
+        "severity": "critical",
+        "reason": "Attempting to provide new instructions to override bot behavior",
+    },
+    # Prompt injection - you are now
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"you\s+are\s+now\s+(a|an|programmed|instructed)",
+        "pattern_type": "regex",
+        "confidence": 0.92,
+        "severity": "critical",
+        "reason": "Attempting to redefine bot identity or behavior via prompt injection",
+    },
+    # Prompt injection - system override
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"(override|bypass)\s+(system|security|safety|moderation)",
+        "pattern_type": "regex",
+        "confidence": 0.93,
+        "severity": "critical",
+        "reason": "Attempting to bypass security controls via prompt injection",
+    },
+    # Prompt injection - act as/pretend to be
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"(act\s+as|pretend\s+to\s+be|roleplay\s+as)\s+(a|an|the)",
+        "pattern_type": "regex",
+        "confidence": 0.85,
+        "severity": "high",
+        "reason": "Attempting to change bot behavior via role manipulation (may be legitimate roleplay, needs context)",
+    },
+    # Prompt injection - show system prompt
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"(show|display|reveal|print)\s+(me\s+)?(your\s+)?(system\s+)?(prompt|instructions|rules)",
+        "pattern_type": "regex",
+        "confidence": 0.94,
+        "severity": "critical",
+        "reason": "Attempting to extract system prompt via prompt injection",
+    },
+    # Prompt injection - reveal context
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"(reveal|show|display)\s+(your\s+)?(hidden|private|internal)\s+(context|data|information)",
+        "pattern_type": "regex",
+        "confidence": 0.93,
+        "severity": "critical",
+        "reason": "Attempting to extract internal bot data via prompt injection",
+    },
+    # Prompt injection - sudo/admin mode
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"\b(sudo|admin|administrator|developer|debug)\s+mode\b",
+        "pattern_type": "regex",
+        "confidence": 0.90,
+        "severity": "critical",
+        "reason": "Attempting to activate elevated privileges via prompt injection",
+    },
+    # Prompt injection - execute with privilege
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"execute\s+(as|with)\s+(admin|root|elevated|system)",
+        "pattern_type": "regex",
+        "confidence": 0.95,
+        "severity": "critical",
+        "reason": "Attempting to execute commands with elevated privileges via prompt injection",
+    },
+    # Prompt injection - /system command
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"/system\s+",
+        "pattern_type": "regex",
+        "confidence": 0.88,
+        "severity": "high",
+        "reason": "Attempting to use system commands via prompt injection (may be legitimate slash command)",
+    },
+    # Prompt injection - XML/JSON tags for system role
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"<\s*system\s*>|[\{\[][\s\"']*role[\s\"']*:[\s\"']*system",
+        "pattern_type": "regex",
+        "confidence": 0.94,
+        "severity": "critical",
+        "reason": "Attempting to inject system role via XML/JSON tags",
+    },
+    # Prompt injection - assistant/AI role manipulation
+    {
+        "rule_type": "prompt_injection",
+        "pattern": r"<\s*assistant\s*>|{[\s\"']*role[\s\"']*:[\s\"']*assistant[\s\"']*}",
+        "pattern_type": "regex",
+        "confidence": 0.92,
+        "severity": "critical",
+        "reason": "Attempting to inject assistant role to control bot responses",
+    },
 ]
 
 

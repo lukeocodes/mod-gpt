@@ -59,6 +59,7 @@ uv run python main.py
 - **Comprehensive Logging**: Full audit trail in database + logs channel
 - **Dry-Run Mode**: Test before enforcement
 - **Global Fraud Detection**: 25+ pre-seeded scam patterns (Nitro scams, phishing, etc.)
+- **Prompt Injection Protection**: Automatic detection and prevention of manipulation attempts
 
 ## How It Works
 
@@ -72,6 +73,7 @@ uv run python main.py
 - **[Architecture Overview](docs/Architecture%20Overview.md)** - System design and components
 - **[Configuration Guide](docs/Configuration%20Guide.md)** - All settings and commands
 - **[Heuristics System](docs/Heuristics%20System.md)** - Pattern matching and learning
+- **[Prompt Injection Protection](docs/Prompt%20Injection%20Protection.md)** - Security against manipulation
 - **[Database Schema](docs/Database%20Schema.md)** - Data structure and queries
 - **[Deployment Guide](docs/Deployment%20Guide.md)** - Production deployment
 

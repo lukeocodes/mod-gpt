@@ -197,7 +197,12 @@ Lightweight HTTP endpoint for deployment health checks:
 - **Permission Checks**: Slash commands require `manage_guild` or `manage_messages`
 - **Rate Limiting**: Relies on Discord's built-in rate limits
 - **Input Validation**: Pydantic models for all configuration
-- **Prompt Injection Protection**: UUID-tagged system prompts
+- **Prompt Injection Protection**:
+  - UUID-tagged system prompts prevent role injection
+  - 14 global heuristics detect common injection patterns
+  - Automatic deletion, warning, and timeout for violators
+  - LLM explicitly trained to recognize and reject manipulation attempts
+  - See [Prompt Injection Protection](./Prompt%20Injection%20Protection.md) for details
 
 ## Future Extensibility
 

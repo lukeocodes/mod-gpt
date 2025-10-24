@@ -34,6 +34,7 @@ pytest tests/test_message_splitting.py -v
 ## Test Structure
 
 - `test_message_splitting.py` - Tests for Discord message splitting functionality that handles the 2000 character limit
+- `test_prompt_injection.py` - Tests for prompt injection detection heuristics and security patterns
 
 ## Adding New Tests
 
