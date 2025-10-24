@@ -1,6 +1,6 @@
 # Configuration Guide
 
-This guide covers all configuration options for **mod-gpt**.
+This guide covers all configuration options for **Sentinel AI**.
 
 ## Environment Variables
 
@@ -37,7 +37,7 @@ DATABASE_URL=postgresql://username:password@host:port/database
 
 **Examples:**
 
-- Local: `postgresql://postgres:password@localhost:5432/modgpt`
+- Local: `postgresql://postgres:password@localhost:5432/sentinel`
 - Supabase: `postgresql://postgres:password@db.xxxxx.supabase.co:5432/postgres`
 - Heroku: `postgresql://user:pass@ec2-xxx.compute-1.amazonaws.com:5432/dbname`
 
@@ -376,7 +376,7 @@ Right-click any message to access:
 
 ```bash
 # Install dependencies
-pip install -e .
+uv sync
 
 # Set environment variables
 export DISCORD_TOKEN=...
@@ -384,23 +384,23 @@ export DATABASE_URL=...
 export OPENAI_API_KEY=...
 
 # Run bot
-python main.py
+uv run python main.py
 ```
 
 ### Docker
 
 ```bash
 # Build image
-docker build -t mod-gpt .
+docker build -t sentinel-ai .
 
 # Run container
 docker run -d \
-  --name mod-gpt \
+  --name sentinel-ai \
   -e DISCORD_TOKEN=... \
   -e DATABASE_URL=... \
   -e OPENAI_API_KEY=... \
   -p 8080:8080 \
-  mod-gpt
+  sentinel-ai
 ```
 
 ### Fly.io

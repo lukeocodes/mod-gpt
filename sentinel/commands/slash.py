@@ -1,4 +1,4 @@
-"""Slash command definitions for ModGPT admin/config."""
+"""Slash command definitions for Sentinel AI admin/config."""
 
 from __future__ import annotations
 

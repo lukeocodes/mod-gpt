@@ -1,4 +1,4 @@
-"""Persistent state management for mod-gpt."""
+"""Persistent state management for Sentinel AI."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ class ContextChannel(BaseModel):
 class PersonaProfile(BaseModel):
     """Persona configuration for the bot."""
 
-    name: str = "ModGPT"
+    name: str = "Sentinel"
     description: str = "A diligent, fair Discord moderator who values context."
     interests: List[str] = Field(default_factory=list)
     conversation_style: str = (

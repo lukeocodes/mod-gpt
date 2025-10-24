@@ -1,4 +1,4 @@
-"""Discord bot wiring for mod-gpt."""
+"""Discord bot wiring for Sentinel AI."""
 
 from __future__ import annotations
 

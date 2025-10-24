@@ -15,7 +15,7 @@ We release patches for security vulnerabilities in the following versions:
 If you discover a security vulnerability, please report it privately to the maintainers:
 
 1. **Email:** [Your security email]
-2. **Subject:** `[SECURITY] mod-gpt vulnerability report`
+2. **Subject:** `[SECURITY] Sentinel AI vulnerability report`
 
 ### What to Include
 
@@ -83,22 +83,27 @@ If you discover a security vulnerability, please report it privately to the main
 ## Known Security Limitations
 
 ### 1. LLM Hallucinations
+
 **Risk:** LLM may generate incorrect or biased moderation decisions  
 **Mitigation:** Heuristics provide first-pass filtering, dry-run mode for testing, human review for critical actions
 
 ### 2. Prompt Injection
+
 **Risk:** Users may try to manipulate system prompts  
 **Mitigation:** System prompts wrapped in UUID-tagged guards, user input sanitized, function calling restricts actions
 
 ### 3. Database Access
+
 **Risk:** Database compromise exposes moderation history  
 **Mitigation:** Strong passwords, SSL connections, IP restrictions, separate bot user with limited permissions
 
 ### 4. API Key Exposure
+
 **Risk:** Exposed keys grant access to OpenAI/Discord accounts  
 **Mitigation:** Never commit to Git, use secret management, rotate regularly, monitor usage for anomalies
 
 ### 5. Discord Permissions
+
 **Risk:** Bot with excessive permissions could be weaponized  
 **Mitigation:** Minimum required permissions, role hierarchy checks, audit logging, dry-run mode
 
@@ -166,10 +171,9 @@ We commit to:
 ## Contact
 
 - **Security issues:** [Your security email]
-- **General issues:** [GitHub Issues](https://github.com/your-username/mod-gpt/issues)
-- **Questions:** [GitHub Discussions](https://github.com/your-username/mod-gpt/discussions)
+- **General issues:** [GitHub Issues](https://github.com/your-username/sentinel-ai/issues)
+- **Questions:** [GitHub Discussions](https://github.com/your-username/sentinel-ai/discussions)
 
 ---
 
-Thank you for helping keep mod-gpt and its users safe! 🔒
-
+Thank you for helping keep Sentinel AI and its users safe! 🔒

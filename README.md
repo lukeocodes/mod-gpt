@@ -1,4 +1,4 @@
-# mod-gpt – AI-Powered Discord Moderation Bot
+# Sentinel AI – AI-Powered Discord Moderation Bot
 
 An intelligent Discord moderation bot that combines fast pattern matching with LLM reasoning to protect your community. Learns from your server's rules and gets smarter over time.
 
@@ -14,7 +14,7 @@ An intelligent Discord moderation bot that combines fast pattern matching with L
 
 ```bash
 # Install dependencies
-pip install -e .
+uv sync
 
 # Create .env file with required variables
 cat > .env << EOF
@@ -23,7 +23,7 @@ DATABASE_URL=postgresql://user:password@host:5432/database
 EOF
 
 # Run the bot
-python main.py
+uv run python main.py
 ```
 
 ### First-Time Setup
@@ -120,7 +120,7 @@ User: "Free Nitro here! discord.gg/scam123"
 3. LLM analyzes: "This is a Nitro scam violating Rule #1"
 4. Action: Delete message, warn user, log event
 
-🤖 ModGPT: @User, your message was removed. Our server prohibits spam and scam links. Please review #rules.
+🤖 Sentinel: @User, your message was removed. Our server prohibits spam and scam links. Please review #rules.
 ```
 
 ### Continuous Learning
@@ -228,7 +228,7 @@ MIT License - see [LICENSE](LICENSE)
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/mod-gpt/issues)
+- **Issues**: [GitHub Issues](https://github.com/your-username/sentinel-ai/issues)
 - **Documentation**: See `docs/` directory
 - **Security**: Report vulnerabilities privately to maintainers
 

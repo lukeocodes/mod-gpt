@@ -1,4 +1,4 @@
-"""Configuration helpers for the mod-gpt bot."""
+"""Configuration helpers for the Sentinel AI bot."""
 
 from __future__ import annotations
 

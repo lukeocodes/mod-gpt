@@ -1,4 +1,4 @@
-"""LLM interaction helpers for mod-gpt."""
+"""LLM interaction helpers for Sentinel AI."""
 
 from __future__ import annotations
 

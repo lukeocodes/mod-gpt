@@ -1,16 +1,16 @@
-"""Entry-point for running the mod-gpt Discord bot."""
+"""Entry-point for running the Sentinel AI Discord bot."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 
-from modgpt import create_bot
-from modgpt.models.config import load_settings
-from modgpt.db import Database
-from modgpt.health import start_health_server
-from modgpt.services.llm import LLMClient
-from modgpt.services.state import StateStore
+from sentinel import create_bot
+from sentinel.models.config import load_settings
+from sentinel.db import Database
+from sentinel.health import start_health_server
+from sentinel.services.llm import LLMClient
+from sentinel.services.state import StateStore
 
 
 def configure_logging() -> None:

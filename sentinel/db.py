@@ -222,7 +222,7 @@ class Database:
                 insert into persona_profile (id, name, description, conversation_style, interests)
                 values (
                     1,
-                    'ModGPT',
+                    'Sentinel',
                     'A diligent, fair Discord moderator who values context.',
                     'Friendly, concise, proactive when needed, otherwise quietly attentive.',
                     '[]'::jsonb

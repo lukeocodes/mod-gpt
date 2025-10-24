@@ -1,4 +1,4 @@
-"""Context menu command definitions for ModGPT."""
+"""Context menu command definitions for Sentinel AI."""
 
 from __future__ import annotations
 

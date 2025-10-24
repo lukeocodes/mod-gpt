@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying **mod-gpt** to production environments.
+This guide covers deploying **Sentinel AI** to production environments.
 
 ## Prerequisites
 
@@ -57,7 +57,7 @@ fly launch --no-deploy
 
 Follow prompts:
 
-- App name: Choose unique name (e.g., `my-mod-gpt`)
+- App name: Choose unique name (e.g., `my-sentinel-ai`)
 - Region: Choose closest to your users
 - Don't add databases yet (we'll use external PostgreSQL)
 
@@ -95,7 +95,7 @@ fly logs
 curl https://your-app-name.fly.dev/health
 
 # Should return:
-# {"status": "ok", "dry_run": false, "persona": "ModGPT", "llm_configured": true, ...}
+# {"status": "ok", "dry_run": false, "persona": "Sentinel", "llm_configured": true, ...}
 ```
 
 ### 8. Monitor
@@ -124,7 +124,7 @@ brew install heroku/brew/heroku  # macOS
 heroku login
 
 # Create app
-heroku create my-mod-gpt
+heroku create my-sentinel-ai
 ```
 
 ### 2. Add PostgreSQL
@@ -177,7 +177,7 @@ worker: python main.py
 1. Go to [Railway](https://railway.app/)
 2. Click "New Project"
 3. Select "Deploy from GitHub"
-4. Connect your mod-gpt repository
+4. Connect your sentinel-ai repository
 
 ### 2. Add PostgreSQL
 
@@ -210,7 +210,7 @@ Railway automatically deploys on git push.
 1. Go to [DigitalOcean App Platform](https://cloud.digitalocean.com/apps)
 2. Click "Create App"
 3. Select your GitHub repository
-4. Choose "mod-gpt" directory
+4. Choose "sentinel-ai" directory
 
 ### 2. Configure Build
 
@@ -252,11 +252,11 @@ version: "3.8"
 services:
   bot:
     build: .
-    container_name: mod-gpt
+    container_name: sentinel-ai
     restart: unless-stopped
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/modgpt
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/sentinel
     depends_on:
       - postgres
     ports:
@@ -264,10 +264,10 @@ services:
 
   postgres:
     image: postgres:15-alpine
-    container_name: mod-gpt-postgres
+    container_name: sentinel-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_DB=modgpt
+      - POSTGRES_DB=sentinel
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
     volumes:
@@ -319,32 +319,36 @@ sudo apt install python3.10 python3-pip git postgresql-client
 
 ```bash
 cd /opt
-sudo git clone https://github.com/your-username/mod-gpt.git
-cd mod-gpt
+sudo git clone https://github.com/your-username/sentinel-ai.git
+cd sentinel-ai
 ```
 
 ### 3. Install Dependencies
 
 ```bash
-sudo pip3 install -e .
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Sync dependencies
+uv sync
 ```
 
 ### 4. Create Service File
 
-`/etc/systemd/system/mod-gpt.service`:
+`/etc/systemd/system/sentinel-ai.service`:
 
 ```ini
 [Unit]
-Description=ModGPT Discord Bot
+Description=Sentinel AI Discord Bot
 After=network.target
 
 [Service]
 Type=simple
-User=mod-gpt
-WorkingDirectory=/opt/mod-gpt
+User=sentinel
+WorkingDirectory=/opt/sentinel-ai
 Environment="DISCORD_TOKEN=your-token"
-Environment="DATABASE_URL=postgresql://user:pass@localhost:5432/modgpt"
-ExecStart=/usr/bin/python3 main.py
+Environment="DATABASE_URL=postgresql://user:pass@localhost:5432/sentinel"
+ExecStart=/root/.cargo/bin/uv run python main.py
 Restart=always
 RestartSec=10
 
@@ -355,22 +359,22 @@ WantedBy=multi-user.target
 ### 5. Create User
 
 ```bash
-sudo useradd -r -s /bin/false mod-gpt
-sudo chown -R mod-gpt:mod-gpt /opt/mod-gpt
+sudo useradd -r -s /bin/false sentinel
+sudo chown -R sentinel:sentinel /opt/sentinel-ai
 ```
 
 ### 6. Enable and Start
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable mod-gpt
-sudo systemctl start mod-gpt
+sudo systemctl enable sentinel-ai
+sudo systemctl start sentinel-ai
 
 # Check status
-sudo systemctl status mod-gpt
+sudo systemctl status sentinel-ai
 
 # View logs
-sudo journalctl -u mod-gpt -f
+sudo journalctl -u sentinel-ai -f
 ```
 
 ## Database Setup
@@ -410,16 +414,16 @@ sudo apt install postgresql postgresql-contrib
 
 # Create database and user
 sudo -u postgres psql
-CREATE DATABASE modgpt;
-CREATE USER modgpt WITH PASSWORD 'secure-password';
-GRANT ALL PRIVILEGES ON DATABASE modgpt TO modgpt;
+CREATE DATABASE sentinel;
+CREATE USER sentinel WITH PASSWORD 'secure-password';
+GRANT ALL PRIVILEGES ON DATABASE sentinel TO sentinel;
 \q
 ```
 
 **Connection URL:**
 
 ```
-postgresql://modgpt:secure-password@localhost:5432/modgpt
+postgresql://sentinel:secure-password@localhost:5432/sentinel
 ```
 
 ## Monitoring & Logs
@@ -438,7 +442,7 @@ curl http://your-domain:8080/health
 {
   "status": "ok",
   "dry_run": false,
-  "persona": "ModGPT",
+  "persona": "Sentinel",
   "llm_configured": true,
   "database_connected": true
 }
@@ -457,7 +461,7 @@ The bot uses Python's `logging` module with INFO level by default.
 **Log format:**
 
 ```
-2025-10-23 12:00:00 | INFO | modgpt.bot | Logged in as ModGPT#1234
+2025-10-23 12:00:00 | INFO | sentinel.bot | Logged in as Sentinel#1234
 ```
 
 **Important log events:**
@@ -474,8 +478,8 @@ The bot uses Python's `logging` module with INFO level by default.
 - Fly.io: `fly logs -f`
 - Heroku: `heroku logs --tail`
 - Railway: Dashboard → Deployments → Logs
-- Docker: `docker logs -f mod-gpt`
-- Systemd: `journalctl -u mod-gpt -f`
+- Docker: `docker logs -f sentinel-ai`
+- Systemd: `journalctl -u sentinel-ai -f`
 
 ### Error Alerting
 
@@ -558,7 +562,7 @@ sudo apt install pgbouncer
 
 # Configure /etc/pgbouncer/pgbouncer.ini
 [databases]
-modgpt = host=localhost port=5432 dbname=modgpt
+sentinel = host=localhost port=5432 dbname=sentinel
 
 [pgbouncer]
 pool_mode = transaction
@@ -569,7 +573,7 @@ default_pool_size = 20
 **Update DATABASE_URL:**
 
 ```
-postgresql://user:pass@localhost:6432/modgpt
+postgresql://user:pass@localhost:6432/sentinel
 ```
 
 ### LLM Cost Optimization
@@ -639,10 +643,10 @@ postgresql://user:pass@localhost:6432/modgpt
 **Example:**
 
 ```sql
-CREATE USER modgpt_bot WITH PASSWORD 'strong-generated-password';
-GRANT CONNECT ON DATABASE modgpt TO modgpt_bot;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO modgpt_bot;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO modgpt_bot;
+CREATE USER sentinel_bot WITH PASSWORD 'strong-generated-password';
+GRANT CONNECT ON DATABASE sentinel TO sentinel_bot;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO sentinel_bot;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO sentinel_bot;
 ```
 
 ### 3. Discord Permissions
@@ -718,22 +722,22 @@ aws s3 cp backup-$(date +%Y%m%d).sql.gz s3://my-backups/
 
 ```bash
 #!/bin/bash
-# /opt/mod-gpt/backup.sh
+# /opt/sentinel-ai/backup.sh
 
 DATE=$(date +%Y%m%d)
 BACKUP_DIR=/backups
 DATABASE_URL="your-database-url"
 
-pg_dump $DATABASE_URL | gzip > $BACKUP_DIR/modgpt-$DATE.sql.gz
+pg_dump $DATABASE_URL | gzip > $BACKUP_DIR/sentinel-$DATE.sql.gz
 
 # Keep only last 30 days
-find $BACKUP_DIR -name "modgpt-*.sql.gz" -mtime +30 -delete
+find $BACKUP_DIR -name "sentinel-*.sql.gz" -mtime +30 -delete
 ```
 
 **Add to cron:**
 
 ```bash
-0 2 * * * /opt/mod-gpt/backup.sh
+0 2 * * * /opt/sentinel-ai/backup.sh
 ```
 
 ### Restore from Backup

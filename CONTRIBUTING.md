@@ -1,6 +1,6 @@
-# Contributing to mod-gpt
+# Contributing to Sentinel AI
 
-Thank you for considering contributing to mod-gpt! This document provides guidelines and instructions for contributing.
+Thank you for considering contributing to Sentinel AI! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -11,11 +11,13 @@ Be respectful, constructive, and professional in all interactions. We aim to mai
 ### Reporting Bugs
 
 Before creating a bug report:
-1. Check the [issue tracker](https://github.com/your-username/mod-gpt/issues) for existing reports
+
+1. Check the [issue tracker](https://github.com/your-username/sentinel-ai/issues) for existing reports
 2. Verify the bug exists in the latest version
 3. Collect relevant information (logs, configuration, steps to reproduce)
 
 **Bug Report Template:**
+
 ```
 **Description:** Clear description of the bug
 
@@ -29,7 +31,7 @@ Before creating a bug report:
 **Actual Behavior:** What actually happens
 
 **Environment:**
-- Python version: 
+- Python version:
 - Discord.py version:
 - OpenAI SDK version:
 - Database: (PostgreSQL version, provider)
@@ -37,7 +39,9 @@ Before creating a bug report:
 
 **Logs:**
 ```
+
 Paste relevant logs here
+
 ```
 
 **Additional Context:** Any other relevant information
@@ -46,6 +50,7 @@ Paste relevant logs here
 ### Suggesting Enhancements
 
 Enhancement suggestions are welcome! Please:
+
 1. Check if the enhancement already exists in issues
 2. Describe the use case and benefit
 3. Provide examples of how it would work
@@ -61,6 +66,7 @@ Enhancement suggestions are welcome! Please:
 6. **Submit the PR** with a clear description
 
 **PR Template:**
+
 ```
 **Description:** What does this PR do?
 
@@ -94,11 +100,11 @@ Does this introduce any breaking changes?
 
 ```bash
 # Clone your fork
-git clone https://github.com/your-username/mod-gpt.git
-cd mod-gpt
+git clone https://github.com/your-username/sentinel-ai.git
+cd sentinel-ai
 
 # Install dependencies
-pip install -e .
+uv sync
 
 # Create .env file
 cp .env.example .env
@@ -113,16 +119,19 @@ python main.py
 Currently, testing is manual:
 
 1. **Set up test Discord server**
+
    - Create a private server for testing
    - Invite your development bot
    - Create test channels
 
 2. **Enable dry-run mode**
+
    ```
    /set-dry-run enabled
    ```
 
 3. **Test scenarios**
+
    - Add context channels
    - Send test messages (spam, profanity, scams)
    - Use slash commands
@@ -146,6 +155,7 @@ Currently, testing is manual:
 - **Linter:** Ruff
 
 **Run formatters:**
+
 ```bash
 # Format code
 black .
@@ -181,17 +191,18 @@ async def fetch_messages(channel: discord.TextChannel, limit: int = 50) -> List[
 - **Type hints:** Prefer type hints over docstring types
 
 **Docstring Format:**
+
 ```python
 def build_system_prompt(state: BotState, built_in_prompt: str | None = None) -> str:
     """Build the system prompt for LLM reasoning.
-    
+
     Combines persona, context channels, memories, and built-in guidance
     into a comprehensive system prompt.
-    
+
     Args:
         state: Current bot state including persona and context
         built_in_prompt: Optional deployment-specific guidance
-        
+
     Returns:
         Complete system prompt with guardrails
     """
@@ -201,6 +212,7 @@ def build_system_prompt(state: BotState, built_in_prompt: str | None = None) -> 
 ### Imports
 
 Organize imports in three groups:
+
 1. Standard library
 2. Third-party packages
 3. Local modules
@@ -318,24 +330,28 @@ Security update for CVE-2024-XXXXX
 ## Pull Request Process
 
 1. **Branch naming:**
+
    - `feat/description` for features
    - `fix/description` for bug fixes
    - `docs/description` for documentation
    - `refactor/description` for refactoring
 
 2. **Before submitting:**
+
    - Run formatters: `black . && ruff check --fix .`
    - Test thoroughly in your Discord server
    - Update documentation if behavior changed
    - Write clear commit messages
 
 3. **PR description:**
+
    - Explain what and why
    - Reference related issues
    - Describe testing performed
    - Note any breaking changes
 
 4. **Review process:**
+
    - Maintainers will review within 7 days
    - Address feedback promptly
    - Keep discussion constructive
@@ -348,9 +364,9 @@ Security update for CVE-2024-XXXXX
 ## Project Structure
 
 ```
-mod-gpt/
+sentinel-ai/
 ├── main.py                 # Entry point
-├── modgpt/
+├── sentinel/
 │   ├── __init__.py
 │   ├── bot.py              # Bot initialization and events
 │   ├── db.py               # Database layer
@@ -380,6 +396,7 @@ mod-gpt/
 We especially welcome contributions in these areas:
 
 ### High Priority
+
 - [ ] Automated testing (pytest, discord.py mocking)
 - [ ] Performance optimization (heuristic matching, database queries)
 - [ ] Additional deployment guides (AWS, GCP, Azure)
@@ -387,6 +404,7 @@ We especially welcome contributions in these areas:
 - [ ] Internationalization (i18n) support
 
 ### Medium Priority
+
 - [ ] Additional LLM providers (Anthropic, local models)
 - [ ] Role-based permissions for commands
 - [ ] Scheduled actions (auto-archive old messages, etc.)
@@ -394,6 +412,7 @@ We especially welcome contributions in these areas:
 - [ ] Content warning system
 
 ### Nice to Have
+
 - [ ] Web dashboard for configuration
 - [ ] Mobile app for moderation
 - [ ] Machine learning model training from moderation history
@@ -401,9 +420,8 @@ We especially welcome contributions in these areas:
 
 ## Questions?
 
-- **General questions:** Open a [GitHub Discussion](https://github.com/your-username/mod-gpt/discussions)
-- **Bug reports:** Create an [Issue](https://github.com/your-username/mod-gpt/issues)
+- **General questions:** Open a [GitHub Discussion](https://github.com/your-username/sentinel-ai/discussions)
+- **Bug reports:** Create an [Issue](https://github.com/your-username/sentinel-ai/issues)
 - **Security issues:** Email maintainers privately (see SECURITY.md)
 
-Thank you for contributing to mod-gpt! 🎉
-
+Thank you for contributing to Sentinel AI! 🎉

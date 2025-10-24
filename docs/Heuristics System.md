@@ -4,7 +4,7 @@ The heuristics system provides fast-path pattern matching for common moderation 
 
 ## Overview
 
-**mod-gpt** uses a two-tier moderation approach:
+**Sentinel AI** uses a two-tier moderation approach:
 
 1. **Heuristics (Fast Path)**: Pattern-based rules checked against every message
 2. **LLM Reasoning (Slow Path)**: Context-aware decisions when heuristics match or manual review needed
@@ -123,7 +123,7 @@ Universal patterns that apply to **all servers**:
 - Investment scams ("guaranteed returns")
 - Common URL shorteners (may be phishing)
 
-**Seeded on bot startup** from `modgpt/utils/seed_heuristics.py`.
+**Seeded on bot startup** from `sentinel/utils/seed_heuristics.py`.
 
 ### Guild-Specific Heuristics (`guild_id = 123456789`)
 

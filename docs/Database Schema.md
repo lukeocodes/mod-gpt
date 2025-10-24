@@ -1,10 +1,11 @@
 # Database Schema
 
-**mod-gpt** uses PostgreSQL for persistent storage of moderation actions, heuristics, conversations, and bot state.
+**Sentinel AI** uses PostgreSQL for persistent storage of moderation actions, heuristics, conversations, and bot state.
 
 ## Tables
 
 ### `moderation_actions`
+
 Audit log of all moderation actions taken by the bot.
 
 ```sql
@@ -28,6 +29,7 @@ CREATE INDEX idx_moderation_actions_type ON moderation_actions(action_type, crea
 ```
 
 **Fields:**
+
 - `id`: Auto-incrementing primary key
 - `created_at`: Timestamp of the action
 - `guild_id`: Discord server ID
@@ -41,6 +43,7 @@ CREATE INDEX idx_moderation_actions_type ON moderation_actions(action_type, crea
 - `metadata`: Additional structured data (JSON)
 
 ### `heuristic_rules`
+
 Pattern-based detection rules for fast-path moderation.
 
 ```sql
@@ -64,6 +67,7 @@ CREATE INDEX idx_heuristic_rules_pattern ON heuristic_rules(pattern_type, active
 ```
 
 **Fields:**
+
 - `id`: Auto-incrementing primary key
 - `created_at`: When the rule was created
 - `guild_id`: Server ID (NULL = global rule applies to all servers)
@@ -77,12 +81,14 @@ CREATE INDEX idx_heuristic_rules_pattern ON heuristic_rules(pattern_type, active
 - `metadata`: Additional data (source, examples, etc.)
 
 **Pattern Types:**
+
 - `exact`: Word boundaries required (e.g., "spam" matches " spam " but not "spammer")
 - `regex`: Regular expression pattern (e.g., `r"free[\s_\-]*nitro"`)
 - `fuzzy`: Allows typos and variations (Levenshtein distance)
 - `contains`: Simple substring match (case-insensitive)
 
 ### `conversations`
+
 Tracks multi-turn conversations between users and the bot.
 
 ```sql
@@ -107,6 +113,7 @@ CREATE INDEX idx_conversations_user ON conversations(starter_user_id, ended_at);
 ```
 
 **Fields:**
+
 - `conversation_id`: Auto-incrementing primary key
 - `guild_id`: Discord server ID
 - `channel_id`: Original channel where conversation started
@@ -119,6 +126,7 @@ CREATE INDEX idx_conversations_user ON conversations(starter_user_id, ended_at);
 - `metadata`: Additional data (exit reason, etc.)
 
 ### `conversation_participants`
+
 Links users to conversations (many-to-many relationship).
 
 ```sql
@@ -133,11 +141,13 @@ CREATE INDEX idx_conversation_participants_user ON conversation_participants(use
 ```
 
 **Fields:**
+
 - `conversation_id`: Foreign key to conversations table
 - `user_id`: Discord user ID
 - `joined_at`: When user joined the conversation
 
 ### `conversation_messages`
+
 Individual messages within conversations for context.
 
 ```sql
@@ -155,6 +165,7 @@ CREATE INDEX idx_conversation_messages_conversation ON conversation_messages(con
 ```
 
 **Fields:**
+
 - `message_id`: Discord message ID (primary key)
 - `conversation_id`: Foreign key to conversations table
 - `author_id`: Discord user ID of message author
@@ -164,6 +175,7 @@ CREATE INDEX idx_conversation_messages_conversation ON conversation_messages(con
 - `created_at`: When message was sent
 
 ### `bot_state`
+
 Persistent bot configuration (single row).
 
 ```sql
@@ -176,11 +188,13 @@ CREATE TABLE bot_state (
 ```
 
 **Fields:**
+
 - `id`: Always 1 (enforced by CHECK constraint)
 - `state_data`: Complete BotState serialized as JSON
 - `updated_at`: Last modification timestamp
 
 **State Data Structure (JSON):**
+
 ```json
 {
   "context_channels": {
@@ -193,7 +207,7 @@ CREATE TABLE bot_state (
     }
   },
   "persona": {
-    "name": "ModGPT",
+    "name": "Sentinel",
     "description": "A diligent, fair Discord moderator...",
     "interests": ["community safety", "transparency"],
     "conversation_style": "Friendly, concise..."
@@ -223,6 +237,7 @@ CREATE TABLE bot_state (
 ## Queries & Analytics
 
 ### Recent Moderation Actions
+
 ```sql
 SELECT action_type, target_username, reason, created_at
 FROM moderation_actions
@@ -232,10 +247,11 @@ LIMIT 50;
 ```
 
 ### Top Violated Heuristics
+
 ```sql
 SELECT h.rule_type, h.pattern, COUNT(m.id) AS violation_count
 FROM heuristic_rules h
-LEFT JOIN moderation_actions m 
+LEFT JOIN moderation_actions m
     ON m.metadata->>'matched_heuristic_id' = h.id::text
 WHERE h.guild_id = $1 OR h.guild_id IS NULL
 GROUP BY h.id
@@ -244,6 +260,7 @@ LIMIT 20;
 ```
 
 ### User Moderation History
+
 ```sql
 SELECT action_type, reason, created_at, summary
 FROM moderation_actions
@@ -252,8 +269,9 @@ ORDER BY created_at DESC;
 ```
 
 ### Active Conversations
+
 ```sql
-SELECT c.conversation_id, c.channel_id, c.thread_id, 
+SELECT c.conversation_id, c.channel_id, c.thread_id,
        u.user_id, c.last_activity_at
 FROM conversations c
 JOIN conversation_participants u ON c.conversation_id = u.conversation_id
@@ -264,16 +282,20 @@ ORDER BY c.last_activity_at DESC;
 ## Maintenance
 
 ### Cleanup Stale Conversations
+
 Conversations older than 24 hours are automatically cleaned up:
+
 ```sql
 UPDATE conversations
 SET ended_at = NOW()
-WHERE ended_at IS NULL 
+WHERE ended_at IS NULL
   AND last_activity_at < NOW() - INTERVAL '24 hours';
 ```
 
 ### Archive Old Actions
+
 Optionally partition or archive moderation_actions older than 90 days:
+
 ```sql
 -- Example: Move to archive table
 INSERT INTO moderation_actions_archive
@@ -295,32 +317,35 @@ The bot automatically creates tables on first connection. Future schema changes 
 5. Remove old columns if safe
 
 **Example Migration:**
+
 ```sql
 -- Add a new column for heuristic confidence tracking
-ALTER TABLE heuristic_rules 
+ALTER TABLE heuristic_rules
 ADD COLUMN hit_count INTEGER DEFAULT 0;
 
 -- Add index for performance
-CREATE INDEX idx_heuristic_rules_hits 
-ON heuristic_rules(hit_count DESC) 
+CREATE INDEX idx_heuristic_rules_hits
+ON heuristic_rules(hit_count DESC)
 WHERE active = TRUE;
 ```
 
 ## Backup & Recovery
 
 **Recommended backup strategy:**
+
 - Daily automated backups via PostgreSQL's `pg_dump`
 - Replicate to cloud storage (S3, GCS, etc.)
 - Test recovery process monthly
 - Keep at least 30 days of backups
 
 **Backup Command:**
+
 ```bash
-pg_dump $DATABASE_URL > mod-gpt-backup-$(date +%Y%m%d).sql
+pg_dump $DATABASE_URL > sentinel-backup-$(date +%Y%m%d).sql
 ```
 
 **Restore Command:**
-```bash
-psql $DATABASE_URL < mod-gpt-backup-20251023.sql
-```
 
+```bash
+psql $DATABASE_URL < sentinel-backup-20251023.sql
+```

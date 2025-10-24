@@ -3,9 +3,9 @@ requires = ["setuptools>=63", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mod-gpt"
+name = "sentinel-ai"
 version = "0.1.0"
-description = "LLM-powered Discord moderation experiment with agent routing and function-calling actions."
+description = "AI-Powered Discord Moderation Bot - Combines fast pattern matching with LLM reasoning to protect your community."
 authors = [{ name = "Luke Oliff" }]
 requires-python = ">=3.10"
 dependencies = [

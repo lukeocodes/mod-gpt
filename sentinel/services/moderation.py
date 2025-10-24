@@ -1581,7 +1581,7 @@ Remember: Use actual words from the message, not placeholders. This pattern will
         if message:
             author = getattr(message.author, "display_name", str(message.author))
             return f"Follow-up with {author}"[:100]
-        return "ModGPT Discussion"
+        return "Sentinel Discussion"
 
     async def _build_scheduled_payload(
         self, guild: discord.Guild, state: BotState

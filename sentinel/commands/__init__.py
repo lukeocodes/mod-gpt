@@ -1,4 +1,4 @@
-"""Command registration for ModGPT."""
+"""Command registration for Sentinel AI."""
 
 from .context_menu import register_context_menu_commands
 from .slash import register_slash_commands
