@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.3](https://github.com/lukeocodes/sentinel-ai/compare/v1.2.2...v1.2.3) (2025-10-24)
+
+
+### Bug Fixes
+
+* add guild_id parameter to slash commands state calls ([92ac64a](https://github.com/lukeocodes/sentinel-ai/commit/92ac64a6606dfae5322a11d01446a86d827af5f3))
+* pass guild_id in bot event handlers ([8628f23](https://github.com/lukeocodes/sentinel-ai/commit/8628f2333ab4bbba37c3d71f7bccc5b66913ca4b))
+* remove references to non-existent _state attribute in StateStore ([337aa40](https://github.com/lukeocodes/sentinel-ai/commit/337aa40e9c3826fdaf37d93111d67309df44513d))
+* use explicit guild_id=None for global state access ([ce4bcea](https://github.com/lukeocodes/sentinel-ai/commit/ce4bcea2c313e880bcd1916f81255835149a6b80))
+
+
+### Documentation
+
+* merge duplicate configuration docs into single guide ([abe06e5](https://github.com/lukeocodes/sentinel-ai/commit/abe06e52ea06a9cd44bb2ee91dbe27483d8646af))
+
+
+### Miscellaneous
+
+* update SECURITY.md with contact email ([0bac685](https://github.com/lukeocodes/sentinel-ai/commit/0bac685f5f4561fabc88dd0d48c80c66d371106c))
+
 ## [1.2.2](https://github.com/lukeocodes/sentinel-ai/compare/v1.2.1...v1.2.2) (2025-10-24)
 
 
