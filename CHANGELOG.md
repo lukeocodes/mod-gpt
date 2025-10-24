@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/lukeocodes/sentinel-ai/compare/v1.2.1...v1.2.2) (2025-10-24)
+
+
+### Bug Fixes
+
+* use release tag_name instead of branch name for VERSION ([0b8aa34](https://github.com/lukeocodes/sentinel-ai/commit/0b8aa346e2d94d4058ffb88c37d3b1d3a8284752))
+
 ## [1.2.1](https://github.com/lukeocodes/sentinel-ai/compare/v1.2.0...v1.2.1) (2025-10-24)
 
 
