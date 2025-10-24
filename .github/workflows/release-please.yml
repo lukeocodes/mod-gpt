@@ -1,4 +1,4 @@
-name: Release Please
+name: Release and Deploy
 
 on:
     push:
@@ -34,6 +34,8 @@ jobs:
         permissions:
             contents: write
             pull-requests: write
+        outputs:
+            release_created: ${{ steps.release.outputs.release_created }}
         steps:
             - name: Release Please
               id: release
@@ -42,3 +44,20 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   config-file: .github/release-please-config.json
                   manifest-file: .github/.release-please-manifest.json
+
+    deploy:
+        needs: release-please
+        if: needs.release-please.outputs.release_created
+        name: Deploy app to Fly.io
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install Flyctl
+              uses: superfly/flyctl-actions/setup-flyctl@master
+
+            - name: Deploy to Fly.io
+              run: flyctl deploy --env APP_VERSION=${{ github.ref_name }} --build-arg APP_VERSION=${{ github.ref_name }} --remote-only
+              env:
+                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
