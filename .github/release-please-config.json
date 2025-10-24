@@ -1,0 +1,57 @@
+{
+    "packages": {
+        ".": {
+            "package-name": "sentinel-ai",
+            "release-type": "python",
+            "include-component-in-tag": false,
+            "changelog-sections": [
+                {
+                    "type": "feat",
+                    "section": "Features"
+                },
+                {
+                    "type": "fix",
+                    "section": "Bug Fixes"
+                },
+                {
+                    "type": "perf",
+                    "section": "Performance Improvements"
+                },
+                {
+                    "type": "docs",
+                    "section": "Documentation"
+                },
+                {
+                    "type": "refactor",
+                    "section": "Code Refactoring"
+                },
+                {
+                    "type": "test",
+                    "section": "Tests"
+                },
+                {
+                    "type": "build",
+                    "section": "Build System"
+                },
+                {
+                    "type": "ci",
+                    "section": "Continuous Integration"
+                },
+                {
+                    "type": "chore",
+                    "section": "Miscellaneous",
+                    "hidden": false
+                }
+            ],
+            "extra-files": [
+                {
+                    "type": "toml",
+                    "path": "pyproject.toml",
+                    "jsonpath": "$.project.version"
+                }
+            ]
+        }
+    },
+    "release-search-depth": 100,
+    "pull-request-title-pattern": "chore: release ${version}"
+}
