@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/lukeocodes/sentinel-ai/compare/v1.2.0...v1.2.1) (2025-10-24)
+
+
+### Miscellaneous
+
+* provide fly token to all flyctl commands ([f7631c3](https://github.com/lukeocodes/sentinel-ai/commit/f7631c3e6985797cb36c1ecea12a36c465ef9e34))
+
 ## [1.2.0](https://github.com/lukeocodes/sentinel-ai/compare/v1.1.0...v1.2.0) (2025-10-24)
 
 
