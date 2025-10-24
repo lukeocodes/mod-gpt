@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/lukeocodes/sentinel-ai/compare/v1.0.2...v1.1.0) (2025-10-24)
+
+
+### Features
+
+* add automatic message splitting for Discord's 2000 char limit ([08399bc](https://github.com/lukeocodes/sentinel-ai/commit/08399bcf29d8eba9e0b41bb7948634f9f81644e4))
+* add comprehensive prompt injection protection ([d3a58d7](https://github.com/lukeocodes/sentinel-ai/commit/d3a58d7388ae6d2752b95d664ec7e319dd1e6e22))
+
 ## [1.0.2](https://github.com/lukeocodes/sentinel-ai/compare/v1.0.1...v1.0.2) (2025-10-24)
 
 
