@@ -1,4 +1,4 @@
-name: Release and Publish
+name: Release Please
 
 on:
     push:
@@ -34,8 +34,6 @@ jobs:
         permissions:
             contents: write
             pull-requests: write
-        outputs:
-            release_created: ${{ steps.release.outputs.release_created }}
         steps:
             - name: Release Please
               id: release
@@ -44,35 +42,3 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   config-file: .github/release-please-config.json
                   manifest-file: .github/.release-please-manifest.json
-
-    publish:
-        needs: release-please
-        if: needs.release-please.outputs.release_created
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            id-token: write
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-
-            - name: Setup Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.10"
-
-            - name: Install build dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install build twine
-
-            - name: Build package
-              run: python -m build
-
-            - name: Publish to PyPI
-              env:
-                  TWINE_USERNAME: __token__
-                  TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-              run: twine upload dist/*

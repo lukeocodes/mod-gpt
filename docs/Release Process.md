@@ -121,23 +121,10 @@ When you're ready to release:
    - Create a GitHub release
    - Create a git tag (e.g., `v0.2.0`)
    - Publish the changelog
-   - Automatically publish to PyPI (if `PYPI_API_TOKEN` secret is configured)
 
-### 4. PyPI Publishing
+### 4. Deploy to Production
 
-The workflow automatically publishes to PyPI when a release is created. To set this up:
-
-1. **Create a PyPI API token** at [pypi.org/manage/account/token/](https://pypi.org/manage/account/token/)
-2. **Add the token to GitHub Secrets**:
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Create a new secret named `PYPI_API_TOKEN`
-   - Paste your PyPI token as the value
-
-The package will be automatically published when you merge a release PR.
-
-### 5. Optional: Manual Deployment
-
-After the release is created, you can manually deploy to production if needed:
+After the release is created, deploy the new version to production:
 
 ```bash
 # Pull the latest tags
@@ -146,6 +133,8 @@ git pull --tags
 # Deploy to Fly.io
 fly deploy
 ```
+
+The release workflow creates GitHub releases and tags for versioning. Since Sentinel AI is a bot application (not a library), there's no package publishing - just deploy the tagged version to your hosting platform.
 
 ## Version Numbering
 
@@ -162,18 +151,9 @@ Current version is managed in:
 
 ## Configuration Files
 
-- **`.github/workflows/release-please.yml`** - GitHub Actions workflow with PyPI publishing
+- **`.github/workflows/release-please.yml`** - GitHub Actions workflow for automated releases
 - **`.github/release-please-config.json`** - Release-please configuration
 - **`.github/.release-please-manifest.json`** - Version tracking
-
-## GitHub Secrets Required
-
-For automatic PyPI publishing, you need to configure:
-
-- **`PYPI_API_TOKEN`** - API token from PyPI for publishing packages
-  - Create at: [pypi.org/manage/account/token/](https://pypi.org/manage/account/token/)
-  - Scope: "Entire account" or specific to "sentinel-ai" project
-  - Add to: Repository Settings → Secrets and variables → Actions
 
 ## Troubleshooting
 
