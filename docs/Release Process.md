@@ -151,9 +151,20 @@ Current version is managed in:
 
 ## Configuration Files
 
-- **`.github/workflows/release-please.yml`** - GitHub Actions workflow for automated releases
+- **`.github/workflows/release-please.yml`** - GitHub Actions workflow for automated releases and deployment
 - **`.github/release-please-config.json`** - Release-please configuration
 - **`.github/.release-please-manifest.json`** - Version tracking
+
+## GitHub Secrets Required
+
+For automatic deployment to Fly.io, you need to configure:
+
+- **`FLY_API_TOKEN`** - API token from Fly.io for deployments
+  - Create at: [fly.io/user/personal_access_tokens](https://fly.io/user/personal_access_tokens)
+  - Add to: Repository Settings → Secrets and variables → Actions
+- **`FLY_APP_NAME`** - Your Fly.io app name
+  - Find with: `flyctl apps list`
+  - Add to: Repository Settings → Secrets and variables → Actions
 
 ## Troubleshooting
 
