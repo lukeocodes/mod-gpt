@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/lukeocodes/sentinel-ai/compare/v1.1.0...v1.2.0) (2025-10-24)
+
+
+### Features
+
+* implement guild isolation and machine registration ([a664ceb](https://github.com/lukeocodes/sentinel-ai/commit/a664cebccca5d10eeef28c79533e32a9f61fc1c7))
+
+
+### Bug Fixes
+
+* set app_version on fly deployment prior to deploy ([9bbea55](https://github.com/lukeocodes/sentinel-ai/commit/9bbea556ca6b747311e122aa13751f8e82323be0))
+
 ## [1.1.0](https://github.com/lukeocodes/sentinel-ai/compare/v1.0.2...v1.1.0) (2025-10-24)
 
 
