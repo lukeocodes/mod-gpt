@@ -210,7 +210,7 @@ class ModerationAgent:
 
         if not should_respond:
             # Still check for automations even if not responding conversationally
-            state = await self._state.get_state()
+            state = await self._state.get_state(guild_id=message.guild.id)
             if await self._apply_automation_if_needed(message, state):
                 return
 
@@ -240,7 +240,7 @@ class ModerationAgent:
             message.channel, include_current=True, current_message_id=message.id
         )
 
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=message.guild.id)
         context = EventContext(
             bot=self._bot,
             guild=message.guild,
@@ -275,7 +275,7 @@ class ModerationAgent:
         recent_messages, recent_summary = await self._gather_recent_messages(
             after.channel, include_current=False, current_message_id=after.id
         )
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=after.guild.id)
         context = EventContext(
             bot=self._bot,
             guild=after.guild,
@@ -291,7 +291,7 @@ class ModerationAgent:
         await self._reason_about_event("message_edit", payload, state, context)
 
     async def handle_member_join(self, member: discord.Member) -> None:
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=member.guild.id)
         guild = member.guild
         context = EventContext(bot=self._bot, guild=guild, member=member, dry_run=state.dry_run)
         payload = {
@@ -313,7 +313,7 @@ class ModerationAgent:
             if cleaned > 0:
                 logger.info("Cleaned up %d stale conversations", cleaned)
 
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=guild.id)
         payload = await self._build_scheduled_payload(guild, state)
         context = EventContext(bot=self._bot, guild=guild, dry_run=state.dry_run)
         await self._reason_about_event("scheduled_tick", payload, state, context)
@@ -1202,7 +1202,7 @@ class ModerationAgent:
         """
         from ..utils.prompts import build_system_prompt
 
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=guild.id)
 
         # Build prompt for heuristic generation
         system_prompt = build_system_prompt(state, built_in_prompt=state.built_in_prompt)
@@ -1304,7 +1304,7 @@ Remember: You MUST use actual offensive words in patterns. This is a moderation 
         """
         from ..utils.prompts import build_system_prompt
 
-        state = await self._state.get_state()
+        state = await self._state.get_state(guild_id=message.guild.id)
         system_prompt = build_system_prompt(state, built_in_prompt=state.built_in_prompt)
 
         user_prompt = f"""

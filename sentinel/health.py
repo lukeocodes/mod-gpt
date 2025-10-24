@@ -4,9 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Optional
 
 from .db import Database
 from .services.state import StateStore
+
+# Avoid circular import by using TYPE_CHECKING
+try:
+    from .services.registration import RegistrationService
+except ImportError:
+    RegistrationService = None
 
 
 async def _handle_client(
@@ -14,6 +21,7 @@ async def _handle_client(
     writer: asyncio.StreamWriter,
     state: StateStore,
     database: Database,
+    registration_service: Optional["RegistrationService"] = None,
 ) -> None:
     try:
         data = await reader.readuntil(b"\r\n\r\n")
@@ -34,12 +42,34 @@ async def _handle_client(
 
     snapshot = await state.get_state()
     db_ok = database.is_connected if database else False
+
+    # Fetch active machines (last 5 minutes) via registration service
+    active_machines = []
+    machine_counts = {"active": 0, "total": 0}
+    if registration_service:
+        active = await registration_service.get_active_machines(max_age_minutes=5)
+        machine_counts = await registration_service.get_machine_counts(max_age_minutes=5)
+        active_machines = [
+            {
+                "machine_id": m["machine_id"],
+                "hostname": m["hostname"],
+                "version": m["bot_version"],
+                "last_active": m["last_active"].isoformat() if m["last_active"] else None,
+            }
+            for m in active
+        ]
+
     payload = {
         "status": "ok",
         "dry_run": snapshot.dry_run,
         "persona": snapshot.persona.name,
         "llm_configured": bool(snapshot.llm.api_key),
         "database_connected": db_ok,
+        "machines": {
+            "active": machine_counts["active"],
+            "total": machine_counts["total"],
+            "instances": active_machines,
+        },
     }
     body = json.dumps(payload).encode()
     response = (
@@ -60,9 +90,10 @@ async def start_health_server(
     port: int,
     state: StateStore,
     database: Database,
+    registration_service: Optional["RegistrationService"] = None,
 ) -> asyncio.AbstractServer:
     server = await asyncio.start_server(
-        lambda r, w: _handle_client(r, w, state, database),
+        lambda r, w: _handle_client(r, w, state, database, registration_service),
         host,
         port,
     )

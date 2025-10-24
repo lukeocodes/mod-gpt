@@ -112,6 +112,7 @@ class Database:
                 """
                 create table if not exists context_channels (
                     channel_id bigint primary key,
+                    guild_id bigint not null,
                     label text not null,
                     notes text
                 );
@@ -122,7 +123,15 @@ class Database:
                 """
                 alter table context_channels 
                 add column if not exists recent_messages text,
-                add column if not exists last_fetched timestamptz;
+                add column if not exists last_fetched timestamptz,
+                add column if not exists guild_id bigint;
+                """
+            )
+            # Create index for guild_id queries
+            cur.execute(
+                """
+                create index if not exists idx_context_channels_guild 
+                on context_channels(guild_id);
                 """
             )
             cur.execute(
@@ -209,25 +218,14 @@ class Database:
             cur.execute(
                 """
                 create table if not exists persona_profile (
-                    id integer primary key default 1,
+                    guild_id bigint primary key,
                     name text not null,
                     description text not null,
                     conversation_style text not null,
-                    interests jsonb not null
+                    interests jsonb not null,
+                    created_at timestamptz not null default now(),
+                    updated_at timestamptz not null default now()
                 );
-                """
-            )
-            cur.execute(
-                """
-                insert into persona_profile (id, name, description, conversation_style, interests)
-                values (
-                    1,
-                    'Sentinel',
-                    'A diligent, fair Discord moderator who values context.',
-                    'Friendly, concise, proactive when needed, otherwise quietly attentive.',
-                    '[]'::jsonb
-                )
-                on conflict (id) do nothing;
                 """
             )
             cur.execute(
@@ -269,6 +267,38 @@ class Database:
                     author_name text,
                     content text not null
                 );
+                """
+            )
+            cur.execute(
+                """
+                create table if not exists guild_config (
+                    guild_id bigint primary key,
+                    logs_channel_id bigint,
+                    dry_run boolean not null default false,
+                    proactive_moderation boolean not null default true,
+                    bot_nickname text,
+                    built_in_prompt text,
+                    created_at timestamptz not null default now(),
+                    updated_at timestamptz not null default now()
+                );
+                """
+            )
+            cur.execute(
+                """
+                create table if not exists machines (
+                    machine_id text primary key,
+                    first_seen timestamptz not null default now(),
+                    last_active timestamptz not null default now(),
+                    bot_version text,
+                    hostname text,
+                    metadata jsonb
+                );
+                """
+            )
+            cur.execute(
+                """
+                create index if not exists idx_machines_last_active 
+                on machines(last_active desc);
                 """
             )
             cur.execute(
@@ -618,20 +648,28 @@ class Database:
                 )
                 return cur.fetchall()
 
-    async def fetch_context_channels(self) -> list[RealDictCursor]:
+    async def fetch_context_channels(self, guild_id: Optional[int] = None) -> list[RealDictCursor]:
         conn = await self._ensure_connection()
         if conn is None:
             return []
         async with self._lock:
             with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
-                    "select channel_id, label, notes, recent_messages, last_fetched from context_channels order by channel_id;"
-                )
+                if guild_id is not None:
+                    cur.execute(
+                        "select channel_id, guild_id, label, notes, recent_messages, last_fetched from context_channels where guild_id = %s order by channel_id;",
+                        (guild_id,),
+                    )
+                else:
+                    # Fetch all if no guild_id specified (for migration/admin purposes)
+                    cur.execute(
+                        "select channel_id, guild_id, label, notes, recent_messages, last_fetched from context_channels order by channel_id;"
+                    )
                 return cur.fetchall()
 
     async def upsert_context_channel(
         self,
         channel_id: int,
+        guild_id: int,
         label: str,
         notes: Optional[str],
         recent_messages: Optional[str] = None,
@@ -644,13 +682,13 @@ class Database:
             with conn, conn.cursor() as cur:
                 cur.execute(
                     """
-                insert into context_channels (channel_id, label, notes, recent_messages, last_fetched)
-                values (%s, %s, %s, %s, %s)
+                insert into context_channels (channel_id, guild_id, label, notes, recent_messages, last_fetched)
+                values (%s, %s, %s, %s, %s, %s)
                 on conflict (channel_id)
-                do update set label = excluded.label, notes = excluded.notes, 
+                do update set guild_id = excluded.guild_id, label = excluded.label, notes = excluded.notes, 
                               recent_messages = excluded.recent_messages, last_fetched = excluded.last_fetched;
                 """,
-                    (channel_id, label, notes, recent_messages, last_fetched),
+                    (channel_id, guild_id, label, notes, recent_messages, last_fetched),
                 )
 
     async def delete_context_channel(self, channel_id: int) -> None:
@@ -664,7 +702,80 @@ class Database:
                     (channel_id,),
                 )
 
+    async def fetch_guild_config(self, guild_id: int) -> Optional[RealDictCursor]:
+        """Fetch all config for a guild."""
+        conn = await self._ensure_connection()
+        if conn is None:
+            return None
+        async with self._lock:
+            with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                select guild_id, logs_channel_id, dry_run, proactive_moderation, 
+                       bot_nickname, built_in_prompt
+                from guild_config
+                where guild_id = %s;
+                """,
+                    (guild_id,),
+                )
+                return cur.fetchone()
+
+    async def upsert_guild_config(
+        self,
+        guild_id: int,
+        logs_channel_id: Optional[int] = None,
+        dry_run: Optional[bool] = None,
+        proactive_moderation: Optional[bool] = None,
+        bot_nickname: Optional[str] = None,
+        built_in_prompt: Optional[str] = None,
+    ) -> None:
+        """Update guild config (only updates provided fields)."""
+        conn = await self._ensure_connection()
+        if conn is None:
+            return
+        async with self._lock:
+            with conn, conn.cursor() as cur:
+                # First ensure row exists
+                cur.execute(
+                    """
+                insert into guild_config (guild_id)
+                values (%s)
+                on conflict (guild_id) do nothing;
+                """,
+                    (guild_id,),
+                )
+                # Build dynamic update based on provided params
+                updates = []
+                params = []
+                if logs_channel_id is not None:
+                    updates.append("logs_channel_id = %s")
+                    params.append(logs_channel_id)
+                if dry_run is not None:
+                    updates.append("dry_run = %s")
+                    params.append(dry_run)
+                if proactive_moderation is not None:
+                    updates.append("proactive_moderation = %s")
+                    params.append(proactive_moderation)
+                if bot_nickname is not None:
+                    updates.append("bot_nickname = %s")
+                    params.append(bot_nickname)
+                if built_in_prompt is not None:
+                    updates.append("built_in_prompt = %s")
+                    params.append(built_in_prompt)
+
+                if updates:
+                    updates.append("updated_at = now()")
+                    params.append(guild_id)
+                    query = f"""
+                    update guild_config
+                    set {", ".join(updates)}
+                    where guild_id = %s;
+                    """
+                    cur.execute(query, tuple(params))
+
+    # Legacy methods - kept for backwards compatibility but deprecated
     async def fetch_logs_channel(self) -> Optional[int]:
+        """Deprecated: Use fetch_guild_config instead."""
         value = await self._get_config_value("logs_channel_id")
         if value is None:
             return None
@@ -675,10 +786,11 @@ class Database:
         return None
 
     async def set_logs_channel(self, channel_id: Optional[int]) -> None:
+        """Deprecated: Use upsert_guild_config instead."""
         payload = {"channel_id": channel_id} if channel_id is not None else None
         await self._set_config_value("logs_channel_id", payload)
 
-    async def fetch_persona(self) -> Optional[RealDictCursor]:
+    async def fetch_persona(self, guild_id: int) -> Optional[RealDictCursor]:
         conn = await self._ensure_connection()
         if conn is None:
             return None
@@ -688,13 +800,15 @@ class Database:
                     """
                 select name, description, conversation_style, interests
                 from persona_profile
-                where id = 1;
-                """
+                where guild_id = %s;
+                """,
+                    (guild_id,),
                 )
                 return cur.fetchone()
 
     async def set_persona(
         self,
+        guild_id: int,
         name: str,
         description: str,
         conversation_style: str,
@@ -707,16 +821,17 @@ class Database:
             with conn, conn.cursor() as cur:
                 cur.execute(
                     """
-                insert into persona_profile (id, name, description, conversation_style, interests)
-                values (1, %s, %s, %s, %s::jsonb)
-                on conflict (id)
+                insert into persona_profile (guild_id, name, description, conversation_style, interests)
+                values (%s, %s, %s, %s, %s::jsonb)
+                on conflict (guild_id)
                 do update set
                     name = excluded.name,
                     description = excluded.description,
                     conversation_style = excluded.conversation_style,
-                    interests = excluded.interests;
+                    interests = excluded.interests,
+                    updated_at = now();
                 """,
-                    (name, description, conversation_style, json.dumps(interests)),
+                    (guild_id, name, description, conversation_style, json.dumps(interests)),
                 )
 
     async def fetch_automations(self) -> list[RealDictCursor]:
@@ -882,19 +997,31 @@ class Database:
                 )
                 return cur.fetchone()
 
-    async def fetch_memories(self) -> list[RealDictCursor]:
+    async def fetch_memories(self, guild_id: Optional[int] = None) -> list[RealDictCursor]:
         conn = await self._ensure_connection()
         if conn is None:
             return []
         async with self._lock:
             with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(
+                if guild_id is not None:
+                    cur.execute(
+                        """
+                    select memory_id, guild_id, author_id, author_name, content, created_at
+                    from memories
+                    where guild_id = %s
+                    order by created_at desc;
+                    """,
+                        (guild_id,),
+                    )
+                else:
+                    # Fetch all if no guild_id specified (for migration/admin purposes)
+                    cur.execute(
+                        """
+                    select memory_id, guild_id, author_id, author_name, content, created_at
+                    from memories
+                    order by created_at desc;
                     """
-                select memory_id, guild_id, author_id, author_name, content, created_at
-                from memories
-                order by created_at desc;
-                """
-                )
+                    )
                 return cur.fetchall()
 
     async def delete_memory(self, guild_id: int, memory_id: int) -> bool:
@@ -1419,5 +1546,68 @@ class Database:
                     limit 20;
                     """,
                     (guild_id,),
+                )
+                return cur.fetchall()
+
+    # Machine Registration Methods
+
+    async def register_machine(
+        self,
+        machine_id: str,
+        bot_version: Optional[str] = None,
+        hostname: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Register or update a machine's heartbeat."""
+        conn = await self._ensure_connection()
+        if conn is None:
+            return
+        async with self._lock:
+            with conn, conn.cursor() as cur:
+                cur.execute(
+                    """
+                    insert into machines (machine_id, bot_version, hostname, metadata, last_active)
+                    values (%s, %s, %s, %s::jsonb, now())
+                    on conflict (machine_id)
+                    do update set
+                        last_active = now(),
+                        bot_version = coalesce(excluded.bot_version, machines.bot_version),
+                        hostname = coalesce(excluded.hostname, machines.hostname),
+                        metadata = coalesce(excluded.metadata, machines.metadata);
+                    """,
+                    (machine_id, bot_version, hostname, json.dumps(metadata or {})),
+                )
+
+    async def fetch_active_machines(self, max_age_minutes: int = 5) -> list[RealDictCursor]:
+        """Fetch machines that have been active within the last N minutes."""
+        conn = await self._ensure_connection()
+        if conn is None:
+            return []
+        async with self._lock:
+            with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    select machine_id, first_seen, last_active, bot_version, hostname, metadata
+                    from machines
+                    where last_active > now() - interval '%s minutes'
+                    order by last_active desc;
+                    """,
+                    (max_age_minutes,),
+                )
+                return cur.fetchall()
+
+    async def fetch_all_machines(self) -> list[RealDictCursor]:
+        """Fetch all registered machines regardless of activity."""
+        conn = await self._ensure_connection()
+        if conn is None:
+            return []
+        async with self._lock:
+            with conn, conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    select machine_id, first_seen, last_active, bot_version, hostname, metadata
+                    from machines
+                    order by last_active desc;
+                    """
                 )
                 return cur.fetchall()

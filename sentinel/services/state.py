@@ -16,6 +16,7 @@ class ContextChannel(BaseModel):
     """Reference to a channel containing static guidance."""
 
     channel_id: int
+    guild_id: int
     label: str
     notes: Optional[str] = None
     recent_messages: Optional[str] = None  # Summary of recent messages from the channel
@@ -79,7 +80,11 @@ class BotState(BaseModel):
 
 
 class StateStore:
-    """Thread-safe state manager backed by database."""
+    """Thread-safe state manager backed by database.
+
+    All configuration is now guild-specific and loaded on-demand.
+    The only global data is LLM settings and global heuristics.
+    """
 
     def __init__(
         self,
@@ -89,52 +94,196 @@ class StateStore:
     ):
         self._lock = asyncio.Lock()
         self._db = database
-        self._built_in_prompt = built_in_prompt
+        self._default_built_in_prompt = built_in_prompt
         initial_llm = (initial_llm_settings or LLMSettings()).model_copy()
         self._initial_llm_settings = initial_llm
-        initial_prompt = built_in_prompt
-        self._state = BotState(built_in_prompt=initial_prompt, llm=initial_llm.model_copy())
 
     async def load(self) -> None:
-        """Load state from persistent storage if available."""
+        """Initialize LLM settings from database if available."""
+        if not self._uses_db:
+            return
 
         async with self._lock:
-            if await self._try_load_from_db():
-                return
+            # Only load global LLM settings at startup
+            stored_llm = await self._db.get_llm_settings()
+            if stored_llm and stored_llm.get("api_key"):
+                # Database has settings, use them
+                pass
+            elif self._initial_llm_settings.api_key:
+                # Initialize database with provided settings
+                await self._db.set_llm_settings(
+                    api_key=self._initial_llm_settings.api_key,
+                    model=self._initial_llm_settings.model,
+                    base_url=self._initial_llm_settings.base_url,
+                )
 
     async def save(self) -> None:
         """Compatibility hook; state writes happen immediately on mutation."""
+        pass
 
-        async with self._lock:
-            if not self._uses_db:
-                return
+    async def get_state(self, guild_id: Optional[int] = None) -> BotState:
+        """Get bot state for a specific guild.
 
-    async def get_state(self) -> BotState:
+        Args:
+            guild_id: Guild ID to get state for. Required for per-guild config.
+
+        Returns:
+            BotState with guild-specific configuration
+        """
+        if not self._uses_db:
+            # No database, return minimal default state
+            return BotState(
+                llm=self._initial_llm_settings.model_copy(),
+                built_in_prompt=self._default_built_in_prompt,
+            )
+
+        if guild_id is None:
+            # No guild context - return minimal state with just LLM settings
+            async with self._lock:
+                stored_llm = await self._db.get_llm_settings()
+                llm_settings = (
+                    LLMSettings(**stored_llm)
+                    if stored_llm
+                    else self._initial_llm_settings.model_copy()
+                )
+                if not llm_settings.api_key:
+                    llm_settings = self._initial_llm_settings.model_copy()
+                if not llm_settings.model:
+                    llm_settings.model = "gpt-4o-mini"
+                return BotState(
+                    llm=llm_settings,
+                    built_in_prompt=self._default_built_in_prompt,
+                )
+
+        # Fetch all guild-specific data
         async with self._lock:
-            self._state.built_in_prompt = self._built_in_prompt
-            return BotState.model_validate(self._state.model_dump())
+            # 1. Guild config (logs, dry_run, nickname, prompt)
+            guild_config = await self._db.fetch_guild_config(guild_id)
+            logs_channel_id = guild_config.get("logs_channel_id") if guild_config else None
+            dry_run = guild_config.get("dry_run", False) if guild_config else False
+            proactive_moderation = (
+                guild_config.get("proactive_moderation", True) if guild_config else True
+            )
+            bot_nickname = guild_config.get("bot_nickname") if guild_config else None
+            built_in_prompt = (
+                guild_config.get("built_in_prompt")
+                if guild_config
+                else self._default_built_in_prompt
+            )
+
+            # 2. Persona for this guild
+            persona_row = await self._db.fetch_persona(guild_id)
+            if persona_row:
+                interests = persona_row["interests"] or []
+                if isinstance(interests, str):
+                    try:
+                        interests = json.loads(interests)
+                    except json.JSONDecodeError:
+                        interests = []
+                persona = PersonaProfile(
+                    name=persona_row["name"],
+                    description=persona_row["description"],
+                    conversation_style=persona_row["conversation_style"],
+                    interests=list(interests),
+                )
+            else:
+                # Default persona
+                persona = PersonaProfile()
+
+            # 3. Context channels for this guild
+            context_rows = await self._db.fetch_context_channels(guild_id=guild_id)
+            context_channels = {
+                row["channel_id"]: ContextChannel(
+                    channel_id=row["channel_id"],
+                    guild_id=row["guild_id"],
+                    label=row["label"],
+                    notes=row["notes"],
+                    recent_messages=row.get("recent_messages"),
+                    last_fetched=row.get("last_fetched").isoformat()
+                    if row.get("last_fetched")
+                    else None,
+                )
+                for row in context_rows
+            }
+
+            # 4. Memories for this guild
+            memories_rows = await self._db.fetch_memories(guild_id=guild_id)
+            memories: List[MemoryNote] = []
+            for row in memories_rows:
+                mapping = dict(row)
+                created = mapping.get("created_at")
+                memories.append(
+                    MemoryNote(
+                        memory_id=mapping.get("memory_id"),
+                        guild_id=mapping.get("guild_id"),
+                        content=mapping.get("content", ""),
+                        author=mapping.get("author_name", "Unknown"),
+                        author_id=mapping.get("author_id", 0),
+                        created_at=created.isoformat()
+                        if isinstance(created, datetime)
+                        else str(created or ""),
+                    )
+                )
+
+            # 5. Automations (global, but could be filtered by guild if needed)
+            automation_rows = await self._db.fetch_automations()
+            automations: Dict[int, AutomationRule] = {}
+            for row in automation_rows:
+                mapping = dict(row)
+                rule = AutomationRule(
+                    channel_id=mapping.get("channel_id"),
+                    trigger_summary=mapping.get("trigger_summary", ""),
+                    action=mapping.get("action", ""),
+                    justification=mapping.get("justification", ""),
+                    active=mapping.get("active", True),
+                    keywords=list(mapping.get("keywords") or []),
+                )
+                automations[rule.channel_id] = rule
+
+            # 6. LLM settings (global)
+            stored_llm = await self._db.get_llm_settings()
+            llm_settings = (
+                LLMSettings(**stored_llm) if stored_llm else self._initial_llm_settings.model_copy()
+            )
+            if not llm_settings.api_key:
+                llm_settings = self._initial_llm_settings.model_copy()
+            if not llm_settings.model:
+                llm_settings.model = "gpt-4o-mini"
+
+            return BotState(
+                context_channels=context_channels,
+                persona=persona,
+                logs_channel_id=logs_channel_id,
+                automations=automations,
+                bot_nickname=bot_nickname,
+                memories=memories,
+                dry_run=dry_run,
+                proactive_moderation=proactive_moderation,
+                llm=llm_settings,
+                built_in_prompt=built_in_prompt,
+            )
 
     async def add_context_channel(self, channel: ContextChannel) -> None:
+        """Add or update a context channel for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.context_channels[channel.channel_id] = channel
-            if self._uses_db:
-                await self._db.upsert_context_channel(
-                    channel_id=channel.channel_id,
-                    label=channel.label,
-                    notes=channel.notes,
-                    recent_messages=channel.recent_messages,
-                    last_fetched=channel.last_fetched,
-                )
-            await self._write_locked()
+            await self._db.upsert_context_channel(
+                channel_id=channel.channel_id,
+                guild_id=channel.guild_id,
+                label=channel.label,
+                notes=channel.notes,
+                recent_messages=channel.recent_messages,
+                last_fetched=channel.last_fetched,
+            )
 
     async def remove_context_channel(self, channel_id: int) -> bool:
+        """Remove a context channel."""
+        if not self._uses_db:
+            return False
         async with self._lock:
-            removed = self._state.context_channels.pop(channel_id, None) is not None
-            if removed:
-                if self._uses_db:
-                    await self._db.delete_context_channel(channel_id)
-                await self._write_locked()
-            return removed
+            await self._db.delete_context_channel(channel_id)
+            return True
 
     async def refresh_context_channel(self, channel_id: int, bot, llm_client) -> bool:
         """Refresh the content summary for a specific context channel.
@@ -169,6 +318,7 @@ class StateStore:
             # Update with new content
             updated_channel = ContextChannel(
                 channel_id=ctx.channel_id,
+                guild_id=ctx.guild_id,
                 label=ctx.label,
                 notes=ctx.notes,
                 recent_messages=recent_messages,
@@ -216,48 +366,47 @@ class StateStore:
         logger.info(f"Refreshed {refreshed}/{len(state.context_channels)} context channels")
         return refreshed
 
-    async def set_logs_channel(self, channel_id: Optional[int]) -> None:
+    async def set_logs_channel(self, guild_id: int, channel_id: Optional[int]) -> None:
+        """Set the logs channel for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.logs_channel_id = channel_id
-            if self._uses_db:
-                await self._db.set_logs_channel(channel_id)
-            await self._write_locked()
+            await self._db.upsert_guild_config(guild_id=guild_id, logs_channel_id=channel_id)
 
     async def upsert_automation(self, rule: AutomationRule) -> None:
+        """Add or update an automation rule."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.automations[rule.channel_id] = rule
-            if self._uses_db:
-                await self._db.upsert_automation(
-                    channel_id=rule.channel_id,
-                    trigger_summary=rule.trigger_summary,
-                    action=rule.action,
-                    justification=rule.justification,
-                    active=rule.active,
-                    keywords=rule.keywords,
-                )
-            await self._write_locked()
+            await self._db.upsert_automation(
+                channel_id=rule.channel_id,
+                trigger_summary=rule.trigger_summary,
+                action=rule.action,
+                justification=rule.justification,
+                active=rule.active,
+                keywords=rule.keywords,
+            )
 
     async def deactivate_automation(self, channel_id: int) -> bool:
+        """Deactivate an automation rule."""
+        if not self._uses_db:
+            return False
         async with self._lock:
-            if channel_id not in self._state.automations:
-                return False
-            self._state.automations[channel_id].active = False
-            if self._uses_db:
-                await self._db.deactivate_automation(channel_id)
-            await self._write_locked()
+            await self._db.deactivate_automation(channel_id)
             return True
 
-    async def set_persona(self, persona: PersonaProfile) -> None:
+    async def set_persona(self, guild_id: int, persona: PersonaProfile) -> None:
+        """Set the persona for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.persona = persona
-            if self._uses_db:
-                await self._db.set_persona(
-                    name=persona.name,
-                    description=persona.description,
-                    conversation_style=persona.conversation_style,
-                    interests=persona.interests,
-                )
-            await self._write_locked()
+            await self._db.set_persona(
+                guild_id=guild_id,
+                name=persona.name,
+                description=persona.description,
+                conversation_style=persona.conversation_style,
+                interests=persona.interests,
+            )
 
     async def add_memory(
         self,
@@ -266,24 +415,20 @@ class StateStore:
         author: str,
         author_id: int,
     ) -> MemoryNote:
-        async with self._lock:
-            if not self._uses_db:
-                memory_id = max((m.memory_id for m in self._state.memories), default=0) + 1
-                note = MemoryNote(
-                    memory_id=memory_id,
-                    guild_id=guild_id,
-                    content=content,
-                    author=author,
-                    author_id=author_id,
-                    created_at=datetime.now(timezone.utc).isoformat(),
-                )
-                self._state.memories = [
-                    n for n in self._state.memories if n.memory_id != note.memory_id
-                ]
-                self._state.memories.insert(0, note)
-                self._state.memories.sort(key=lambda item: item.created_at, reverse=True)
-                return note
+        """Add a memory note for a guild."""
+        if not self._uses_db:
+            # Without database, create in-memory note
+            note = MemoryNote(
+                memory_id=1,
+                guild_id=guild_id,
+                content=content,
+                author=author,
+                author_id=author_id,
+                created_at=datetime.now(timezone.utc).isoformat(),
+            )
+            return note
 
+        async with self._lock:
             record = await self._db.add_memory(
                 guild_id=guild_id,
                 content=content,
@@ -298,56 +443,64 @@ class StateStore:
                 author_id=record["author_id"],
                 created_at=record["created_at"].isoformat() if record["created_at"] else "",
             )
-            self._state.memories = [
-                n for n in self._state.memories if n.memory_id != note.memory_id
-            ]
-            self._state.memories.insert(0, note)
-            self._state.memories.sort(key=lambda item: item.created_at, reverse=True)
             return note
 
     async def list_memories(self, guild_id: int) -> List[MemoryNote]:
+        """List all memories for a guild."""
+        if not self._uses_db:
+            return []
         async with self._lock:
-            relevant = [note for note in self._state.memories if note.guild_id == guild_id]
-            return sorted(relevant, key=lambda note: note.created_at, reverse=True)
+            memories_rows = await self._db.fetch_memories(guild_id=guild_id)
+            memories: List[MemoryNote] = []
+            for row in memories_rows:
+                mapping = dict(row)
+                created = mapping.get("created_at")
+                memories.append(
+                    MemoryNote(
+                        memory_id=mapping.get("memory_id"),
+                        guild_id=mapping.get("guild_id"),
+                        content=mapping.get("content", ""),
+                        author=mapping.get("author_name", "Unknown"),
+                        author_id=mapping.get("author_id", 0),
+                        created_at=created.isoformat()
+                        if isinstance(created, datetime)
+                        else str(created or ""),
+                    )
+                )
+            return memories
 
     async def remove_memory(self, guild_id: int, memory_id: int) -> bool:
+        """Remove a memory from a guild."""
+        if not self._uses_db:
+            return False
         async with self._lock:
-            removed = False
-            if self._uses_db:
-                removed = await self._db.delete_memory(guild_id, memory_id)
-            else:
-                removed = any(note.memory_id == memory_id for note in self._state.memories)
-            if removed:
-                self._state.memories = [
-                    note for note in self._state.memories if note.memory_id != memory_id
-                ]
-            return removed
+            return await self._db.delete_memory(guild_id, memory_id)
 
-    async def set_dry_run(self, enabled: bool) -> None:
+    async def set_dry_run(self, guild_id: int, enabled: bool) -> None:
+        """Set dry-run mode for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.dry_run = enabled
-            if self._uses_db:
-                await self._db.set_dry_run(enabled)
-            await self._write_locked()
+            await self._db.upsert_guild_config(guild_id=guild_id, dry_run=enabled)
 
-    async def set_proactive_moderation(self, enabled: bool) -> None:
+    async def set_proactive_moderation(self, guild_id: int, enabled: bool) -> None:
+        """Set proactive moderation mode for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._state.proactive_moderation = enabled
-            # Note: Not currently persisted to database, defaults to True on restart
-            # Could be added to DB in future if needed
-            await self._write_locked()
+            await self._db.upsert_guild_config(guild_id=guild_id, proactive_moderation=enabled)
 
     @property
     def built_in_prompt(self) -> Optional[str]:
-        return self._built_in_prompt
+        """Get the default built-in prompt."""
+        return self._default_built_in_prompt
 
-    async def set_built_in_prompt(self, prompt: Optional[str]) -> None:
+    async def set_built_in_prompt(self, guild_id: int, prompt: Optional[str]) -> None:
+        """Set the built-in prompt for a guild."""
+        if not self._uses_db:
+            return
         async with self._lock:
-            self._built_in_prompt = prompt
-            self._state.built_in_prompt = prompt
-            if self._uses_db:
-                await self._db.set_built_in_prompt(prompt)
-            await self._write_locked()
+            await self._db.upsert_guild_config(guild_id=guild_id, built_in_prompt=prompt)
 
     async def set_llm_settings(self, settings: LLMSettings) -> None:
         async with self._lock:
@@ -364,128 +517,17 @@ class StateStore:
 
     # Legacy: command_prefix removed - using slash commands exclusively
 
-    async def set_bot_nickname(self, nickname: Optional[str]) -> None:
-        async with self._lock:
-            cleaned = nickname.strip() if nickname and nickname.strip() else None
-            self._state.bot_nickname = cleaned
-            if self._uses_db:
-                await self._db.set_bot_nickname(cleaned)
-            await self._write_locked()
-
-    async def _write_locked(self) -> None:
-        """Assumes caller holds the lock."""
-
+    async def set_bot_nickname(self, guild_id: int, nickname: Optional[str]) -> None:
+        """Set the bot nickname for a guild."""
         if not self._uses_db:
             return
+        async with self._lock:
+            cleaned = nickname.strip() if nickname and nickname.strip() else None
+            await self._db.upsert_guild_config(guild_id=guild_id, bot_nickname=cleaned)
 
     @property
     def _uses_db(self) -> bool:
         return self._db is not None and self._db.is_connected
-
-    async def _try_load_from_db(self) -> bool:
-        if not self._uses_db:
-            return False
-
-        context_rows = await self._db.fetch_context_channels()
-        persona_row = await self._db.fetch_persona()
-        logs_channel_id = await self._db.fetch_logs_channel()
-        automation_rows = await self._db.fetch_automations()
-        bot_nickname = await self._db.get_bot_nickname()
-        memories_rows = await self._db.fetch_memories()
-        dry_run_enabled = await self._db.get_dry_run()
-        stored_prompt = await self._db.get_built_in_prompt()
-        if stored_prompt is None and self._built_in_prompt:
-            await self._db.set_built_in_prompt(self._built_in_prompt)
-            stored_prompt = self._built_in_prompt
-        if stored_prompt is not None:
-            self._built_in_prompt = stored_prompt
-
-        stored_llm = await self._db.get_llm_settings()
-        llm_settings = LLMSettings(**stored_llm)
-        if not llm_settings.api_key and self._initial_llm_settings.api_key:
-            await self._db.set_llm_settings(
-                api_key=self._initial_llm_settings.api_key,
-                model=self._initial_llm_settings.model,
-                base_url=self._initial_llm_settings.base_url,
-            )
-            llm_settings = self._initial_llm_settings
-        elif not stored_llm.get("model") and self._initial_llm_settings.model:
-            llm_settings.model = self._initial_llm_settings.model
-        if not llm_settings.model:
-            llm_settings.model = "gpt-4o-mini"
-
-        context_channels = {
-            row["channel_id"]: ContextChannel(
-                channel_id=row["channel_id"],
-                label=row["label"],
-                notes=row["notes"],
-                recent_messages=row.get("recent_messages"),
-                last_fetched=row.get("last_fetched").isoformat()
-                if row.get("last_fetched")
-                else None,
-            )
-            for row in context_rows
-        }
-
-        persona = PersonaProfile()
-        if persona_row:
-            interests = persona_row["interests"] or []
-            if isinstance(interests, str):
-                try:
-                    interests = json.loads(interests)
-                except json.JSONDecodeError:
-                    interests = []
-            persona = PersonaProfile(
-                name=persona_row["name"],
-                description=persona_row["description"],
-                conversation_style=persona_row["conversation_style"],
-                interests=list(interests),
-            )
-
-        automations: Dict[int, AutomationRule] = {}
-        for row in automation_rows:
-            mapping = dict(row)
-            rule = AutomationRule(
-                channel_id=mapping.get("channel_id"),
-                trigger_summary=mapping.get("trigger_summary", ""),
-                action=mapping.get("action", ""),
-                justification=mapping.get("justification", ""),
-                active=mapping.get("active", True),
-                keywords=list(mapping.get("keywords") or []),
-            )
-            automations[rule.channel_id] = rule
-
-        memories: List[MemoryNote] = []
-        for row in memories_rows:
-            mapping = dict(row)
-            created = mapping.get("created_at")
-            memories.append(
-                MemoryNote(
-                    memory_id=mapping.get("memory_id"),
-                    guild_id=mapping.get("guild_id"),
-                    content=mapping.get("content", ""),
-                    author=mapping.get("author_name", "Unknown"),
-                    author_id=mapping.get("author_id", 0),
-                    created_at=created.isoformat()
-                    if isinstance(created, datetime)
-                    else str(created or ""),
-                )
-            )
-
-        llm_settings = llm_settings.model_copy()
-
-        self._state = BotState(
-            context_channels=context_channels,
-            persona=persona,
-            logs_channel_id=logs_channel_id,
-            automations=automations,
-            bot_nickname=bot_nickname,
-            memories=memories,
-            dry_run=dry_run_enabled,
-            built_in_prompt=self._built_in_prompt,
-            llm=llm_settings,
-        )
-        return True
 
 
 async def fetch_channel_context(channel, message_limit: int = 50, llm_client=None) -> str:

@@ -13,6 +13,11 @@ from pydantic import AliasChoices, BaseModel, Field, ValidationError
 class BotSettings(BaseModel):
     """Runtime configuration parsed from environment variables."""
 
+    version: Optional[str] = Field(
+        default=None,
+        alias="VERSION",
+        validation_alias=AliasChoices("VERSION", "APP_VERSION", "BOT_VERSION"),
+    )
     discord_token: str = Field(..., alias="DISCORD_TOKEN")
     database_url: Optional[str] = Field(
         default=None,
@@ -21,6 +26,11 @@ class BotSettings(BaseModel):
     )
     health_host: str = Field(default="0.0.0.0", alias="HEALTH_HOST")
     health_port: int = Field(default=8080, alias="HEALTH_PORT")
+    machine_id: Optional[str] = Field(
+        default=None,
+        alias="MACHINE_ID",
+        validation_alias=AliasChoices("MACHINE_ID", "FLY_MACHINE_ID", "HOSTNAME"),
+    )
 
     class Config:
         populate_by_name = True

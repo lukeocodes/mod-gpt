@@ -234,6 +234,18 @@ CREATE TABLE bot_state (
 }
 ```
 
+## Guild Isolation
+
+**Context channels** and **memories** are guild-scoped to ensure proper data isolation between servers:
+
+- Each context channel is associated with a specific `guild_id`
+- Each memory is associated with a specific `guild_id`
+- Heuristic rules can be either global (`guild_id = NULL`) or guild-specific
+
+When the bot responds to messages, it only accesses context channels and memories for the current guild.
+
+See [Guild Isolation](./Guild%20Isolation.md) for detailed information on how guild isolation is implemented.
+
 ## Queries & Analytics
 
 ### Recent Moderation Actions

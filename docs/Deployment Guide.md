@@ -444,7 +444,19 @@ curl http://your-domain:8080/health
   "dry_run": false,
   "persona": "Sentinel",
   "llm_configured": true,
-  "database_connected": true
+  "database_connected": true,
+  "machines": {
+    "active": 1,
+    "total": 1,
+    "instances": [
+      {
+        "machine_id": "e286de4f711e86",
+        "hostname": "e286de4f711e86",
+        "version": "1.2.3",
+        "last_active": "2025-10-24T13:45:00Z"
+      }
+    ]
+  }
 }
 ```
 

@@ -14,6 +14,11 @@ def _wrap_with_guardrails(content: str) -> str:
 
 
 def build_system_prompt(state: BotState, built_in_prompt: str | None = None) -> str:
+    """Build system prompt from bot state.
+
+    Note: The state passed in should already be filtered by guild_id via state.get_state(guild_id)
+    to ensure only relevant context channels and memories are included.
+    """
     persona = state.persona
     context_lines = []
     if state.context_channels:
@@ -34,9 +39,8 @@ def build_system_prompt(state: BotState, built_in_prompt: str | None = None) -> 
     memory_lines = []
     if state.memories:
         for note in state.memories[:20]:
-            memory_lines.append(
-                f"- ({note.guild_id}) {note.content} — added by {note.author} on {note.created_at}"
-            )
+            # Don't include guild_id in output since state is already filtered to single guild
+            memory_lines.append(f"- {note.content} — added by {note.author} on {note.created_at}")
     else:
         memory_lines.append("No persistent memories recorded.")
 

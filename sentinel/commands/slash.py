@@ -48,6 +48,7 @@ def register_slash_commands(
 
         context_channel = ContextChannel(
             channel_id=channel.id,
+            guild_id=interaction.guild.id,
             label=channel.name,
             notes=description.strip() if description else None,
             recent_messages=recent_messages,
@@ -80,7 +81,7 @@ def register_slash_commands(
 
     @tree.command(name="list-channels", description="List all context channels")
     async def list_channels(interaction: discord.Interaction) -> None:
-        current_state = await state.get_state()
+        current_state = await state.get_state(guild_id=interaction.guild.id)
         if not current_state.context_channels:
             await interaction.response.send_message(
                 "No context channels configured yet.", ephemeral=True
@@ -113,7 +114,7 @@ def register_slash_commands(
         # Defer response since fetching messages may take time
         await interaction.response.defer(ephemeral=True)
 
-        current_state = await state.get_state()
+        current_state = await state.get_state(guild_id=interaction.guild.id)
         if channel.id not in current_state.context_channels:
             await interaction.followup.send(
                 f"❌ {channel.mention} is not a registered context channel. "
@@ -134,6 +135,7 @@ def register_slash_commands(
         ctx_channel = current_state.context_channels[channel.id]
         updated_channel = ContextChannel(
             channel_id=ctx_channel.channel_id,
+            guild_id=ctx_channel.guild_id,
             label=ctx_channel.label,
             notes=ctx_channel.notes,
             recent_messages=recent_messages,
@@ -151,9 +153,9 @@ def register_slash_commands(
     @app_commands.describe(channel="Channel where logs should be sent")
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_logs(interaction: discord.Interaction, channel: discord.TextChannel) -> None:
-        await state.set_logs_channel(channel.id)
+        await state.set_logs_channel(interaction.guild.id, channel.id)
         await interaction.response.send_message(
-            f"✅ Logs channel set to {channel.mention}.", ephemeral=True
+            f"✅ Logs channel set to {channel.mention} for this server.", ephemeral=True
         )
 
     @tree.command(name="remember", description="Add a persistent memory/instruction for the bot")
@@ -332,14 +334,15 @@ def register_slash_commands(
                 ephemeral=True,
             )
             return
-        await state.set_bot_nickname(cleaned)
+        await state.set_bot_nickname(interaction.guild.id, cleaned)
         if cleaned:
             await interaction.response.send_message(
-                f"✅ Nickname updated to `{cleaned}`.", ephemeral=True
+                f"✅ Nickname updated to `{cleaned}` for this server.", ephemeral=True
             )
         else:
             await interaction.response.send_message(
-                "✅ Nickname cleared; the default account name will be used.", ephemeral=True
+                "✅ Nickname cleared for this server; the default account name will be used.",
+                ephemeral=True,
             )
 
     @tree.command(name="set-dry-run", description="Toggle dry-run mode")
@@ -390,16 +393,16 @@ def register_slash_commands(
         style: str,
     ) -> None:
         try:
-            current = (await state.get_state()).persona
+            current = (await state.get_state(guild_id=interaction.guild.id)).persona
             persona = PersonaProfile(
                 name=name,
                 description=description,
                 conversation_style=style,
                 interests=current.interests,
             )
-            await state.set_persona(persona)
+            await state.set_persona(interaction.guild.id, persona)
             await interaction.response.send_message(
-                f"✅ Persona updated.\n• Name: {persona.name}\n• Description: {persona.description}\n• Style: {persona.conversation_style}",
+                f"✅ Persona updated for this server.\n• Name: {persona.name}\n• Description: {persona.description}\n• Style: {persona.conversation_style}",
                 ephemeral=True,
             )
         except Exception as e:
@@ -413,16 +416,17 @@ def register_slash_commands(
     @app_commands.checks.has_permissions(manage_guild=True)
     async def set_interests(interaction: discord.Interaction, interests: str) -> None:
         items = [item.strip() for item in interests.split(",") if item.strip()]
-        current = await state.get_state()
+        current = await state.get_state(guild_id=interaction.guild.id)
         persona = PersonaProfile(
             name=current.persona.name,
             description=current.persona.description,
             conversation_style=current.persona.conversation_style,
             interests=items,
         )
-        await state.set_persona(persona)
+        await state.set_persona(interaction.guild.id, persona)
         await interaction.response.send_message(
-            f"✅ Persona interests updated: {', '.join(items) if items else 'none'}", ephemeral=True
+            f"✅ Persona interests updated for this server: {', '.join(items) if items else 'none'}",
+            ephemeral=True,
         )
 
     @tree.command(name="set-automation", description="Configure channel automation rules")
