@@ -1,65 +1,66 @@
 name: Release and Deploy
 
 on:
-    push:
-        branches: [main]
+  push:
+    branches: [main]
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Install uv
-              uses: astral-sh/setup-uv@v5
-              with:
-                  enable-cache: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-            - name: Set up Python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: "3.10"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-            - name: Install dependencies
-              run: uv sync --extra dev
+      - name: Install dependencies
+        run: uv sync --extra dev
 
-            - name: Run tests
-              run: uv run pytest -v
+      - name: Run tests
+        run: uv run pytest -v
 
-    release-please:
-        needs: test
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-            pull-requests: write
-        outputs:
-            release_created: ${{ steps.release.outputs.release_created }}
-        steps:
-            - name: Release Please
-              id: release
-              uses: google-github-actions/release-please-action@v4
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  config-file: .github/release-please-config.json
-                  manifest-file: .github/.release-please-manifest.json
+  release-please:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Release Please
+        id: release
+        uses: google-github-actions/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
 
-    deploy:
-        needs: release-please
-        if: needs.release-please.outputs.release_created
-        name: Deploy app to Fly.io
-        runs-on: ubuntu-latest
-        env:
-            FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+  deploy:
+    needs: release-please
+    if: needs.release-please.outputs.release_created
+    name: Deploy app to Fly.io
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Install Flyctl
-              uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Install Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
 
-            - name: Set Fly.io app version
-              run: flyctl secrets set APP_VERSION=${{ github.ref_name }} -a ${{ secrets.FLY_APP_NAME }}
+      - name: Set Fly.io app version
+        run: flyctl secrets set VERSION=${{ needs.release-please.outputs.tag_name }} -a ${{ secrets.FLY_APP_NAME }}
 
-            - name: Deploy to Fly.io
-              run: flyctl deploy -a ${{ secrets.FLY_APP_NAME }} --env APP_VERSION=${{ github.ref_name }} --build-arg APP_VERSION=${{ github.ref_name }} --remote-only
+      - name: Deploy to Fly.io
+        run: flyctl deploy -a ${{ secrets.FLY_APP_NAME }} --env VERSION=${{ needs.release-please.outputs.tag_name }} --build-arg VERSION=${{ needs.release-please.outputs.tag_name }} --remote-only
