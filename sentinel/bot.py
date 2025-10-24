@@ -78,10 +78,12 @@ def create_bot(
     @bot.event
     async def on_ready() -> None:
         logger.info("Logged in as %s", bot.user)
-        current_state = await state.get_state()
-        nickname = current_state.bot_nickname
-        if nickname:
-            for guild in bot.guilds:
+
+        # Set per-guild nicknames
+        for guild in bot.guilds:
+            current_state = await state.get_state(guild_id=guild.id)
+            nickname = current_state.bot_nickname
+            if nickname:
                 me = guild.me
                 if me and me.nick != nickname:
                     try:
@@ -130,41 +132,46 @@ def create_bot(
         await bot.process_commands(message)
 
         # Auto-refresh context channel if message is in one
-        current_state = await state.get_state()
-        if message.channel.id in current_state.context_channels:
-            logger.info("Message added to context channel %s, refreshing...", message.channel.id)
-            try:
-                await state.refresh_context_channel(message.channel.id, bot, llm)
-            except Exception:
-                logger.exception("Failed to auto-refresh context channel")
+        if message.guild:
+            current_state = await state.get_state(guild_id=message.guild.id)
+            if message.channel.id in current_state.context_channels:
+                logger.info(
+                    "Message added to context channel %s, refreshing...", message.channel.id
+                )
+                try:
+                    await state.refresh_context_channel(message.channel.id, bot, llm)
+                except Exception:
+                    logger.exception("Failed to auto-refresh context channel")
 
         await moderation.handle_message(message)
 
     @bot.event
     async def on_message_edit(before: discord.Message, after: discord.Message) -> None:
         # Auto-refresh context channel if edited message is in one
-        current_state = await state.get_state()
-        if after.channel.id in current_state.context_channels:
-            logger.info("Message edited in context channel %s, refreshing...", after.channel.id)
-            try:
-                await state.refresh_context_channel(after.channel.id, bot, llm)
-            except Exception:
-                logger.exception("Failed to auto-refresh context channel")
+        if after.guild:
+            current_state = await state.get_state(guild_id=after.guild.id)
+            if after.channel.id in current_state.context_channels:
+                logger.info("Message edited in context channel %s, refreshing...", after.channel.id)
+                try:
+                    await state.refresh_context_channel(after.channel.id, bot, llm)
+                except Exception:
+                    logger.exception("Failed to auto-refresh context channel")
 
         await moderation.handle_message_edit(before, after)
 
     @bot.event
     async def on_message_delete(message: discord.Message) -> None:
         # Auto-refresh context channel if deleted message was in one
-        current_state = await state.get_state()
-        if message.channel.id in current_state.context_channels:
-            logger.info(
-                "Message deleted from context channel %s, refreshing...", message.channel.id
-            )
-            try:
-                await state.refresh_context_channel(message.channel.id, bot, llm)
-            except Exception:
-                logger.exception("Failed to auto-refresh context channel")
+        if message.guild:
+            current_state = await state.get_state(guild_id=message.guild.id)
+            if message.channel.id in current_state.context_channels:
+                logger.info(
+                    "Message deleted from context channel %s, refreshing...", message.channel.id
+                )
+                try:
+                    await state.refresh_context_channel(message.channel.id, bot, llm)
+                except Exception:
+                    logger.exception("Failed to auto-refresh context channel")
 
     @bot.event
     async def on_member_join(member: discord.Member) -> None:
